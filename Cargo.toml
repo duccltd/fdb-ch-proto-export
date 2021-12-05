@@ -17,6 +17,10 @@ tonic = "0.4"
 prost = "0.7.0"
 prost-types = "0.7.0"
 protofish = "0.4.0"
+foundationdb = "0.5"
+confy = "0.3.1"
+clickhouse = "0.7"
+os_type = "2.3"
 
 [build-dependencies]
 tonic-build = "0.4"

@@ -21,6 +21,9 @@ foundationdb = "0.5"
 confy = "0.3.1"
 clickhouse = "0.7"
 os_type = "2.3"
+structopt = { version = "0.3", default-features = false }
+lazy_static = "1.4.0"
+futures = "0.3"
 
 [build-dependencies]
 tonic-build = "0.4"

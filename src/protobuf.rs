@@ -1,15 +1,17 @@
 use protofish::{decode::PackedArray};
 use serde::{Serialize};
+use serde_json::Value;
 
 use std::collections::HashMap;
 
 use crate::error::Error;
 use crate::result::Result;
-use protofish::context::Context;
+use protofish::context::{Context, MessageInfo};
 use std::path::Path;
 
 pub async fn load_protobufs(path: impl AsRef<Path>) -> Result<Context> {
     let common_types = get_common_types().await?;
+
     let protos = tokio::fs::read_to_string(path)
         .await
         .map_err(Error::UnableToReadProtobuf)?;
@@ -44,6 +46,26 @@ async fn get_common_types() -> Result<Vec<String>> {
     }
 
     Ok(bufs)
+}
+
+pub fn map_to_kv(
+    context: &Context,
+    msg: &MessageInfo,
+    value: Vec<u8>,
+) -> Result<HashMap<String, Value>> {
+    let decoded = msg.decode(&value, context);
+
+    let fields = decoded
+        .fields
+        .into_iter()
+        .map(|field| {
+            let name = &msg.get_field(field.number).unwrap().name;
+
+            (name.clone(), value_to_string(context, field.value).unwrap())
+        })
+        .collect();
+
+    Ok(fields)
 }
 
 #[derive(Serialize)]

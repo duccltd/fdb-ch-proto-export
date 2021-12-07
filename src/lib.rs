@@ -5,3 +5,6 @@ pub mod clickhouse;
 pub mod fdb;
 pub mod config;
 pub mod clickhouse_table;
+pub mod protobuf_registry;
+pub mod context;
+pub mod cli;

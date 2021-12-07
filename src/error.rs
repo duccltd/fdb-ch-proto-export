@@ -12,6 +12,8 @@ pub enum Error {
     UnableToWriteConfig(std::io::Error),
     InvalidMappingConfig(String),
     Clickhouse(Arc<clickhouse::error::Error>),
+    ParseError(String),
+    StringDecodeError(std::string::FromUtf8Error)
 }
 
 impl std::fmt::Display for Error {
@@ -31,6 +33,8 @@ impl std::fmt::Display for Error {
                 write!(f, "Invalid mapping configuration: {}", err)
             }
             Error::Clickhouse(ref e) => write!(f, "Clickhouse error: {:?}", e),
+            Error::ParseError(ref e) => write!(f, "Unable to parse: {:?}", e),
+            Error::StringDecodeError(ref e) => write!(f, "String decode error: {}", e),
         }
     }
 }
@@ -56,5 +60,17 @@ impl From<tokio::time::error::Elapsed> for Error {
 impl From<clickhouse::error::Error> for Error {
     fn from(err: clickhouse::error::Error) -> Error {
         Error::Clickhouse(Arc::new(err))
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(err: std::io::Error) -> Self {
+        Error::UnableToReadConfig(err)
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(err: serde_json::Error) -> Self {
+        Error::ParseError(format!("Could not deserialize file due to invalid format: {:?}", err))
     }
 }

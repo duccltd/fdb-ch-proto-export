@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use protofish::context::MessageInfo;
+use protofish::context::{MessageInfo, MessageField};
 
 use crate::{result::Result, error::Error, config::Mapping, clickhouse::{Client, ClickhouseTableColumn}};
 
@@ -42,7 +42,13 @@ pub struct MessageBinding {
     pub table: Table,
 }
 
-pub fn bind_proto_message(table: Table) -> Result<MessageBinding> {
+pub fn bind_proto_message(message: &MessageInfo, table: Table) -> Result<MessageBinding> {
+    message.iter_fields().for_each(
+        |field| {
+
+        }
+    );
+    
     Ok(MessageBinding {
         // r#type: message,
         table

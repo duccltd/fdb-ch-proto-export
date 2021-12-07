@@ -55,7 +55,7 @@ impl std::default::Default for FdbCliConfig {
         Self {
             version: VERSION.to_string(),
             cluster_file: String::from(path),
-            clickhouse_url: "http://localhost:8123".to_string(),
+            clickhouse_url: "http://localhost:8083".to_string(),
             proto_file: None,
             mapping_file: None,
         }

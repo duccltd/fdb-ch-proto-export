@@ -16,13 +16,13 @@ tracing-subscriber = { version = "0.2", features = ["tracing-log"] }
 tonic = "0.4"
 prost = "0.7.0"
 prost-types = "0.7.0"
-protofish = "0.4.0"
 foundationdb = "0.5"
 confy = "0.3.1"
 clickhouse = "0.7"
 os_type = "2.3"
 structopt = { version = "0.3", default-features = false }
 lazy_static = "1.4.0"
+protofish = { git = "https://github.com/Rantanen/protofish.git", rev = "90e2468d7383f5f67166b57e50f106ca3ee761a7" }
 futures = "0.3"
 
 [build-dependencies]

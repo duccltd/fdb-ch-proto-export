@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, clickhouse::Row, Serialize, Deserialize, Clone)]
 pub struct ClickhouseTableColumn {
     pub name: String,
-    pub position: String,
+    pub position: u64,
     pub r#type: String,
     pub default_expression: String,
 }

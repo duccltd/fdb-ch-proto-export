@@ -35,12 +35,9 @@ impl AppContext {
         message: &MessageInfo, 
         table_name: &String
     ) -> Result<()> {
-        let table = match self.construct_table(table_name).await {
-            Ok(table) => table,
-            Err(_e) => return Err(Error::ParseError("Unable to fetch table columns.".into()))
-        };
+        let table = self.construct_table(table_name).await?;
 
-        let binding = match bind_proto_message(table) {
+        let binding = match bind_proto_message(message, table) {
             Ok(binding) => binding,
             Err(_e) => return Err(Error::ParseError("Could not create binding.".into()))
         };
@@ -57,6 +54,10 @@ impl AppContext {
         let table = ClickhouseTableParts::from_string(&table_name)?;
 
         let columns = self.ch_client.table_columns(table.clone()).await?;
+
+        for col in &columns {
+            println!("{} {} {}", col.name, col.position, col.r#type);
+        }
 
         Ok(Table::new(table, columns))
     }

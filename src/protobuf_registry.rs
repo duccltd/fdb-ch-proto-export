@@ -2,11 +2,11 @@ use protofish::{context::MessageInfo, prelude::Context};
 
 use crate::{result::Result, config::Mapping, error::Error, clickhouse_table::{ClickhouseTableParts, Table, bind_proto_message}, context::{AppContext}};
 
-impl AppContext {
+impl<'a> AppContext<'a> {
     pub async fn bind_messages(
         &mut self,
         mappings: &Vec<Mapping>,
-        proto_context: Context
+        proto_context: &'a Context
     ) -> Result<()> {
         for mapping in mappings {
             let message = match proto_context.get_message(&mapping.proto) {
@@ -32,7 +32,7 @@ impl AppContext {
 
     async fn bind_message(
         &mut self,
-        message: &MessageInfo, 
+        message: &'a MessageInfo, 
         table_name: &String
     ) -> Result<()> {
         let table = self.construct_table(table_name).await?;

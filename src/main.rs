@@ -68,7 +68,7 @@ async fn main() -> Result<()> {
             let mut context = AppContext::new(client, ch_client);
 
             context
-                .bind_messages(mapping, proto_context).await.expect("unable to create registry");
+                .bind_messages(mapping, &proto_context).await.expect("unable to create registry");
 
             context.to_string();
         }

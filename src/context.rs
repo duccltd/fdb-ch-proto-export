@@ -4,19 +4,19 @@ use crate::clickhouse_table::MessageBinding;
 use crate::fdb::FdbClient;
 use crate::clickhouse::Client as ClickhouseClient;
 
-pub type Registry = HashMap<String, MessageBinding>;
+pub type Registry<'a> = HashMap<String, MessageBinding<'a>>;
 
-pub struct AppContext {
+pub struct AppContext<'a> {
     pub fdb_client: FdbClient,
     pub ch_client: ClickhouseClient,
-    pub proto_registry: Registry,
+    pub proto_registry: Registry<'a>,
 }
 
-impl AppContext {
+impl<'a> AppContext<'a> {
     pub fn new(
         fdb_client: FdbClient,
         ch_client: ClickhouseClient,
-    ) -> AppContext {
+    ) -> AppContext<'a> {
         AppContext {
             fdb_client,
             ch_client,

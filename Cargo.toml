@@ -24,6 +24,7 @@ structopt = { version = "0.3", default-features = false }
 lazy_static = "1.4.0"
 protofish = { git = "https://github.com/Rantanen/protofish.git", rev = "90e2468d7383f5f67166b57e50f106ca3ee761a7" }
 futures = "0.3"
+regex = "1"
 
 [build-dependencies]
 tonic-build = "0.4"

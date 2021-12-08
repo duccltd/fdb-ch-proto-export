@@ -96,13 +96,13 @@ pub fn value_to_string(
         //     PackedArray::Bool(v) => to_value(v)?,
         // },
 
-        _ => "UNSUPPORTED".to_string(),
-
         Enum(v) => {
             let resolved = context.resolve_enum(v.enum_ref);
 
             resolved.get_field_by_value(v.value).unwrap().name.clone()
         }
+
+        _ => "UNSUPPORTED".to_string(),
 
         // Value which was incomplete due to missing bytes in the payload.
         // Incomplete(_, v) => serde_json::Value::String(format!(

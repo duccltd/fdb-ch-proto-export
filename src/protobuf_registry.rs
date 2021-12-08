@@ -1,6 +1,6 @@
 use protofish::{context::MessageInfo, prelude::Context};
 
-use crate::{result::Result, config::Mapping, error::Error, clickhouse_table::{ClickhouseTableParts, Table, bind_proto_message}, context::{AppContext}};
+use crate::{result::Result, config::Mapping, error::Error, clickhouse_table::{ClickhouseTableParts, Table}, context::{AppContext}, clickhouse_message_binding::bind_proto_message};
 
 impl<'a> AppContext<'a> {
     pub async fn bind_messages(

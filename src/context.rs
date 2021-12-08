@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::clickhouse_table::MessageBinding;
+use crate::clickhouse_message_binding::MessageBinding;
 use crate::fdb::FdbClient;
 use crate::clickhouse::Client as ClickhouseClient;
 

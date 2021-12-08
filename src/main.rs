@@ -2,6 +2,7 @@ use clickhouse::Client;
 use fdb_ch_proto_export::context::AppContext;
 use fdb_ch_proto_export::cli;
 use fdb_ch_proto_export::{result::Result, fdb::FdbClient, config, error::Error, protobuf::load_protobufs, clickhouse::Client as ClickhouseClient};
+use foundationdb::RangeOption;
 use tracing::*;
 
 
@@ -71,46 +72,46 @@ async fn main() -> Result<()> {
                 .bind_messages(mapping, &proto_context).await.expect("unable to create registry");
 
             context.to_string();
+
+            // for map in mapping {
+            //     let tx = client.begin_tx().await.expect("unable to begin tx");
+
+            //     let mut kvs = tx.get_ranges(
+            //         RangeOption {
+            //             reverse: false,
+            //             limit: None,
+            //             ..RangeOption::from((map.from.as_bytes(), map.to.as_bytes()))
+            //         },
+            //         false,
+            //     );
+
+            //     while let Some(kv) = kvs.next().await {
+            //         let kv = match kv {
+            //             Ok(kv) => kv,
+            //             Err(e) => return Err(Error::Fdb(e)),
+            //         };
+
+            //         let mut batch: Vec<HashMap<String, Value>> = vec![];
+            //         for value in (*kv).into_iter() {
+            //             let v = value.value();
+
+            //             let value = match map_to_kv(
+            //                 &proto_context, 
+            //                 message, 
+            //                 v.to_vec()
+            //             ) {
+            //                 Ok(value) => value,
+            //                 Err(_e) => continue
+            //             };
+
+            //             batch.push(value);
+            //         }
+
+            //         ch_client.write_batch(&table, batch).await?;
+            //     }
+            // }
         }
     }
-
-    // for map in mapping {
-    //     let tx = client.begin_tx().await.expect("unable to begin tx");
-
-    //     let mut kvs = tx.get_ranges(
-    //         RangeOption {
-    //             reverse: false,
-    //             limit: None,
-    //             ..RangeOption::from((map.from.as_bytes(), map.to.as_bytes()))
-    //         },
-    //         false,
-    //     );
-
-    //     while let Some(kv) = kvs.next().await {
-    //         let kv = match kv {
-    //             Ok(kv) => kv,
-    //             Err(e) => return Err(Error::Fdb(e)),
-    //         };
-
-    //         let mut batch: Vec<HashMap<String, Value>> = vec![];
-    //         for value in (*kv).into_iter() {
-    //             let v = value.value();
-
-    //             let value = match map_to_kv(
-    //                 &proto_context, 
-    //                 message, 
-    //                 v.to_vec()
-    //             ) {
-    //                 Ok(value) => value,
-    //                 Err(_e) => continue
-    //             };
-
-    //             batch.push(value);
-    //         }
-
-    //         ch_client.write_batch(&table, batch).await?;
-    //     }
-    // }
 
     Ok(())
 }

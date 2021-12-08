@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use crate::{result::Result, error::Error, clickhouse::{Client, ClickhouseTableColumn}};
+use protofish::prelude::{MessageValue, Context, Value};
+
+use crate::{result::Result, error::Error, clickhouse::{Client, ClickhouseTableColumn}, protobuf::value_to_string};
 
 #[derive(Clone)]
 pub struct ClickhouseTableParts {
@@ -53,21 +55,23 @@ impl Table {
         self.columns.iter().map(|e| e.name.clone()).collect()
     }
 
-    pub fn construct_query(&self, entries: Vec<serde_json::Value>) -> String {
-        let names: Vec<String> = self.columns.iter().map(|e| e.name.clone()).collect();
+    pub fn construct_query(
+        &self, 
+        ctx: &Context,
+        fields: Vec<Value>
+    ) -> Result<String> {
+        let names = self.column_values();
         // let placeholders: Vec<String> = names.iter().map(|_| "{}".to_string()).collect();
         // let query = format!("({})", placeholders.join(","));
 
-        let mut values: Vec<String> = Vec::with_capacity(entries.len());
-        for (i, entry) in entries.iter().enumerate() {
-            let part = match entry {
-                serde_json::Value::String(v) => format!("'{}'", v),
-                _ => "".to_string()
-            };
+        let mut values: Vec<String> = Vec::with_capacity(fields.len());
+        for (i, entry) in fields.iter().enumerate() {
+
+            let part = value_to_string(ctx, entry)?;
 
             values.insert(i, part);
         }
 
-        format!("INSERT INTO {} ({}) VALUES ({})", self.parts.to_string(), names.join(","), values.join(","))
+        Ok(format!("INSERT INTO {} ({}) VALUES ({})", self.parts.to_string(), names.join(","), values.join(",")))
     }
 }

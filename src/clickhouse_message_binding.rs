@@ -1,8 +1,6 @@
-use std::collections::HashMap;
+use protofish::{prelude::{MessageValue, Context, Value}, context::{MessageField, MessageInfo, ValueType}};
 
-use protofish::{prelude::{MessageValue, Context}, context::{MessageField, MessageInfo, ValueType}};
-
-use crate::{clickhouse::ClickhouseTableColumn, clickhouse_table::Table, error::Error, protobuf::map_to_kv};
+use crate::{clickhouse::ClickhouseTableColumn, clickhouse_table::Table, error::Error};
 use lazy_static::lazy_static;
 use regex::Regex;
 use crate::{result::Result};
@@ -100,15 +98,19 @@ impl<'a> MessageBinding<'a> {
         &self,
         ctx: &Context,
         message: &[u8]
-    ) -> Result<Vec<serde_json::Value>> {
-        let kv = map_to_kv(ctx, self.r#type, message.to_vec())?;
+    ) -> Result<Vec<Value>> {
+        let data = self.r#type.decode(message, ctx);
 
-        println!("{:?}", kv);
+        println!("{:?}", data);
 
-        let mut results: Vec<serde_json::Value> = Vec::with_capacity(self.message_mappings.len());
+        // let kv = map_to_kv(ctx, self.r#type, message.to_vec())?;
+
+        // println!("{:?}", kv);
+
+        let mut results: Vec<Value> = Vec::with_capacity(self.message_mappings.len());
 
         for (idx, field) in self.message_mappings.iter().enumerate() {
-            results.insert(idx, field.prepare_field_value(&kv)?.unwrap());
+            results.insert(idx, field.prepare_field_value(&data)?);
         }
 
         Ok(results)
@@ -128,14 +130,16 @@ pub struct PreparedMessageField<'a> {
 impl<'a> PreparedMessageField<'a> {
     pub fn prepare_field_value(
         &self, 
-        message: &HashMap<String, serde_json::Value>
-    ) -> Result<Option<serde_json::Value>> {
-        let field_value = match message.get(&self.desc.name) {
-            Some(field) => field,
-            // TODO: Check if nullable or defauilt exp
-            None => return Err(Error::ParseError("s".into()))
-        };
-
-        Ok(Some(field_value.clone()))
+        message: &MessageValue
+    ) -> Result<Value> {
+        Ok(
+            message
+                .fields
+                .iter()
+                .find(|f| f.number == self.desc.number)
+                .unwrap()
+                .value
+                .clone()
+        )
     }
 }

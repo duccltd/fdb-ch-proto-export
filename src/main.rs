@@ -100,14 +100,18 @@ async fn main() -> Result<()> {
                             None => continue
                         };
 
-                        let res = match binding.prepare(&proto_context, v) {
+                        let fields = match binding.prepare(&proto_context, v) {
                             Ok(res) => res,
                             Err(_e) => continue
                         };
 
-                        let query = binding.table.construct_query(res);
+                        let query = match binding.table.construct_query(&proto_context, fields) {
+                            Ok(query) => query,
+                            Err(_e) => continue
+                        };
 
-                        context.ch_client.write_batch(query).await?;
+                        println!("{}", query);
+                        // context.ch_client.write_batch(query).await?;
                     }
 
                 }

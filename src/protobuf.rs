@@ -1,12 +1,10 @@
-use protofish::{decode::PackedArray};
 use serde::{Serialize};
-use serde_json::Value;
 
 use std::collections::HashMap;
 
 use crate::error::Error;
 use crate::result::Result;
-use protofish::context::{Context, MessageInfo};
+use protofish::context::{Context};
 use std::path::Path;
 
 pub async fn load_protobufs(path: impl AsRef<Path>) -> Result<Context> {
@@ -48,26 +46,6 @@ async fn get_common_types() -> Result<Vec<String>> {
     Ok(bufs)
 }
 
-pub fn map_to_kv(
-    context: &Context,
-    msg: &MessageInfo,
-    value: Vec<u8>,
-) -> Result<HashMap<String, Value>> {
-    let decoded = msg.decode(&value, context);
-
-    let fields = decoded
-        .fields
-        .into_iter()
-        .map(|field| {
-            let name = &msg.get_field(field.number).unwrap().name;
-
-            (name.clone(), value_to_string(context, field.value).unwrap())
-        })
-        .collect();
-
-    Ok(fields)
-}
-
 #[derive(Serialize)]
 struct Record {
     key: String,
@@ -80,76 +58,59 @@ struct Field {
     value: serde_json::Value,
 }
 
-fn value_to_string(
+pub fn value_to_string(
     context: &protofish::context::Context,
-    v: protofish::prelude::Value,
-) -> serde_json::Result<serde_json::Value> {
+    value: &protofish::prelude::Value,
+) -> Result<String> {
     use protofish::prelude::Value::*;
-    use serde_json::to_value;
 
-    Ok(match v {
-        Double(v) => to_value(v)?,
-        Float(v) => to_value(v)?,
-        Int32(v) => to_value(v)?,
-        Int64(v) => to_value(v)?,
-        UInt32(v) => to_value(v)?,
-        UInt64(v) => to_value(v)?,
-        SInt32(v) => to_value(v)?,
-        SInt64(v) => to_value(v)?,
-        Fixed32(v) => to_value(v)?,
-        Fixed64(v) => to_value(v)?,
-        SFixed32(v) => to_value(v)?,
-        SFixed64(v) => to_value(v)?,
-        Bool(v) => to_value(v)?,
-        String(v) => to_value(v)?,
-        Bytes(v) => to_value(v.to_vec())?,
+    Ok(match value {
+        Double(v) => v.to_string(),
+        Float(v) => v.to_string(),
+        Int32(v) => v.to_string(),
+        Int64(v) => v.to_string(),
+        UInt32(v) => v.to_string(),
+        UInt64(v) => v.to_string(),
+        SInt32(v) => v.to_string(),
+        SInt64(v) => v.to_string(),
+        Fixed32(v) => v.to_string(),
+        Fixed64(v) => v.to_string(),
+        SFixed32(v) => v.to_string(),
+        SFixed64(v) => v.to_string(),
+        Bool(v) => v.to_string(),
+        String(v) => format!("'{}'", v),
 
-        Packed(v) => match v {
-            PackedArray::Double(v) => to_value(v)?,
-            PackedArray::Float(v) => to_value(v)?,
-            PackedArray::Int32(v) => to_value(v)?,
-            PackedArray::Int64(v) => to_value(v)?,
-            PackedArray::UInt32(v) => to_value(v)?,
-            PackedArray::UInt64(v) => to_value(v)?,
-            PackedArray::SInt32(v) => to_value(v)?,
-            PackedArray::SInt64(v) => to_value(v)?,
-            PackedArray::Fixed32(v) => to_value(v)?,
-            PackedArray::Fixed64(v) => to_value(v)?,
-            PackedArray::SFixed32(v) => to_value(v)?,
-            PackedArray::SFixed64(v) => to_value(v)?,
-            PackedArray::Bool(v) => to_value(v)?,
-        },
+        // Packed(v) => match v {
+        //     PackedArray::Double(v) => to_value(v)?,
+        //     PackedArray::Float(v) => to_value(v)?,
+        //     PackedArray::Int32(v) => to_value(v)?,
+        //     PackedArray::Int64(v) => to_value(v)?,
+        //     PackedArray::UInt32(v) => to_value(v)?,
+        //     PackedArray::UInt64(v) => to_value(v)?,
+        //     PackedArray::SInt32(v) => to_value(v)?,
+        //     PackedArray::SInt64(v) => to_value(v)?,
+        //     PackedArray::Fixed32(v) => to_value(v)?,
+        //     PackedArray::Fixed64(v) => to_value(v)?,
+        //     PackedArray::SFixed32(v) => to_value(v)?,
+        //     PackedArray::SFixed64(v) => to_value(v)?,
+        //     PackedArray::Bool(v) => to_value(v)?,
+        // },
 
-        Message(v) => {
-            let resolved = context.resolve_message(v.msg_ref);
-
-            serde_json::Value::Object(
-                v.fields
-                    .into_iter()
-                    .map(|field| {
-                        let name = &resolved.get_field(field.number).unwrap().name;
-
-                        (name.clone(), value_to_string(context, field.value).unwrap())
-                    })
-                    .collect(),
-            )
-        }
+        _ => "UNSUPPORTED".to_string(),
 
         Enum(v) => {
             let resolved = context.resolve_enum(v.enum_ref);
 
-            let name = resolved.get_field_by_value(v.value).unwrap().name.clone();
-
-            serde_json::Value::String(name)
+            resolved.get_field_by_value(v.value).unwrap().name.clone()
         }
 
         // Value which was incomplete due to missing bytes in the payload.
-        Incomplete(_, v) => serde_json::Value::String(format!(
-            "INCOMPLETE: {}",
-            std::string::String::from_utf8_lossy(&v.to_vec()).to_string()
-        )),
+        // Incomplete(_, v) => serde_json::Value::String(format!(
+        //     "INCOMPLETE: {}",
+        //     std::string::String::from_utf8_lossy(&v.to_vec()).to_string()
+        // )),
 
         // Value which wasn't defined in the context.
-        Unknown(v) => serde_json::Value::String(format!("UNKNOWN: {:?}", v)),
+        // Unknown(v) => serde_json::Value::String(format!("UNKNOWN: {:?}", v)),
     })
 }

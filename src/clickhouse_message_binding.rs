@@ -78,8 +78,7 @@ pub fn bind_proto_message(message: &MessageInfo, table: Table) -> Result<Message
 
             let table_column = match table.columns.iter().find(|c| &c.name == column_name) {
                 Some(col) => col,
-                // TODO: Error type
-                None => return Err(Error::ParseError("Column does not exist".into()))
+                None => return Err(Error::NoAvailableColumnBinding("Column does not exist".into()))
             };
 
             column_fields[table_column.position as usize] = prepare(field, table_column)?;

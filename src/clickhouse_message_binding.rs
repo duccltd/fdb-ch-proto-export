@@ -1,6 +1,8 @@
-use protofish::{prelude::MessageValue, context::{MessageField, MessageInfo, ValueType}};
+use std::collections::HashMap;
 
-use crate::{clickhouse::ClickhouseTableColumn, clickhouse_table::Table, error::Error};
+use protofish::{prelude::{MessageValue, Context}, context::{MessageField, MessageInfo, ValueType}};
+
+use crate::{clickhouse::ClickhouseTableColumn, clickhouse_table::Table, error::Error, protobuf::map_to_kv};
 use lazy_static::lazy_static;
 use regex::Regex;
 use crate::{result::Result};
@@ -62,14 +64,13 @@ fn prepare<'a>(field: &'a MessageField, column: &ClickhouseTableColumn) -> Resul
 
         nullable,
         int_size,
-        is_timestamp: todo!(),
-        is_datetime_64: todo!(),
-        timestamp_fields: todo!(),
-        default_expression: column.default_expression,
+        default_expression: column.default_expression.clone(),
     })
 }
 
 pub fn bind_proto_message(message: &MessageInfo, table: Table) -> Result<MessageBinding> {
+    println!("binding {} to {}. num columns: {}", &message.full_name, &table.parts.to_string(), table.columns.len());
+
     let mut column_fields: Vec<PreparedMessageField> = Vec::with_capacity(table.columns.len());
 
     message.iter_fields().try_for_each(
@@ -78,14 +79,10 @@ pub fn bind_proto_message(message: &MessageInfo, table: Table) -> Result<Message
 
             let table_column = match table.columns.iter().find(|c| &c.name == column_name) {
                 Some(col) => col,
-                None => return Err(Error::NoAvailableColumnBinding("Column does not exist".into()))
+                None => return Err(Error::NoAvailableColumnBinding(format!("Column does not exist: column={}", column_name).into()))
             };
 
-            column_fields[table_column.position as usize] = prepare(field, table_column)?;
-
-            if ValueType::Message(message.self_ref) == field.field_type  {
-                // TODO: Sub messages - E.g google timestamp
-            }
+            column_fields.insert((table_column.position - 1) as usize, prepare(field, table_column)?);
 
             Ok(())
         }
@@ -99,11 +96,21 @@ pub fn bind_proto_message(message: &MessageInfo, table: Table) -> Result<Message
 }
 
 impl<'a> MessageBinding<'a> {
-    pub fn prepare(&self, message: &MessageValue) -> Result<Vec<String>> {
-        let mut results: Vec<String> = Vec::with_capacity(self.message_mappings.len());
+    pub fn prepare(
+        &self,
+        ctx: &Context,
+        message: &[u8]
+    ) -> Result<Vec<serde_json::Value>> {
+        let kv = map_to_kv(ctx, self.r#type, message.to_vec())?;
+
+        println!("{:?}", kv);
+
+        let mut results: Vec<serde_json::Value> = Vec::with_capacity(self.message_mappings.len());
+
         for (idx, field) in self.message_mappings.iter().enumerate() {
-            results[idx] = field.prepare_field_value(message)?.unwrap();
+            results.insert(idx, field.prepare_field_value(&kv)?.unwrap());
         }
+
         Ok(results)
     }
 
@@ -115,39 +122,20 @@ pub struct PreparedMessageField<'a> {
 
     nullable: bool,
     int_size: i32,
-    is_timestamp: bool,
-    is_datetime_64: bool,
-    timestamp_fields: Vec<String>,
-
     default_expression: String,
 }
 
 impl<'a> PreparedMessageField<'a> {
-    pub fn prepare_field_value<T>(
+    pub fn prepare_field_value(
         &self, 
-        _message: &MessageValue
-    ) -> Result<Option<T>> {
-        // let field_value = match message.fields.iter().find(|f| f.number == field.desc.number) {
-        //     Some(value) => value,
-        //     None => {
-        //         if field.nullable {
-        //             return Ok(None);
-        //         } else {
-        //             // TODO: Return default type
-        //             return Ok(None)
-        //         }
-        //     }
-        // };
+        message: &HashMap<String, serde_json::Value>
+    ) -> Result<Option<serde_json::Value>> {
+        let field_value = match message.get(&self.desc.name) {
+            Some(field) => field,
+            // TODO: Check if nullable or defauilt exp
+            None => return Err(Error::ParseError("s".into()))
+        };
 
-        // if field.is_timestamp {
-        //     return Ok(None)
-        // } else if field.int_size != 0 {
-        //     // Check kinds and deserialize
-        //     return Ok(None)
-        // } else {
-        //     return Ok(Some(field_value.value))
-        // }
-        Ok(None)
-
+        Ok(Some(field_value.clone()))
     }
 }

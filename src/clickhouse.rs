@@ -38,10 +38,15 @@ impl Client {
         Ok(rows)
     }
 
-    pub async fn write_batch(&self, table: &Table, batch: Vec<HashMap<String, serde_json::Value>>) -> Result<()> {
-        let _query = table.construct_query(batch.clone());
-
-        //
+    pub async fn write_batch(&self, query: String) -> Result<()> {
+        self.client
+            .query(&query)
+            .execute()
+            .await
+            .map_err(|e| {
+                format!("inserting batch: {}", &e);
+                e
+            })?;
 
         Ok(())
     }

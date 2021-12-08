@@ -37,10 +37,7 @@ impl<'a> AppContext<'a> {
     ) -> Result<()> {
         let table = self.construct_table(table_name).await?;
 
-        let binding = match bind_proto_message(message, table) {
-            Ok(binding) => binding,
-            Err(_e) => return Err(Error::ParseError("Could not create binding.".into()))
-        };
+        let binding = bind_proto_message(message, table)?;
         
         self.proto_registry.insert(message.full_name.clone(), binding);
 

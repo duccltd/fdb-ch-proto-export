@@ -1,8 +1,11 @@
+use std::sync::Arc;
+
 use clickhouse::Client;
 use fdb_ch_proto_export::context::AppContext;
 use fdb_ch_proto_export::cli;
 use fdb_ch_proto_export::{result::Result, fdb::FdbClient, config, error::Error, protobuf::load_protobufs, clickhouse::Client as ClickhouseClient};
 use foundationdb::RangeOption;
+use futures::StreamExt;
 use tracing::*;
 
 
@@ -60,56 +63,55 @@ async fn main() -> Result<()> {
             #[allow(unused)]
             let guard = unsafe { FdbClient::start_network() }.expect("unable to start network");
 
-            let client = FdbClient::new(&config.cluster_file).expect("unable to start client");
+            let client = Arc::new(FdbClient::new(&config.cluster_file).expect("unable to start client"));
 
             let ch_client = ClickhouseClient::new(Client::default().with_url(&config.clickhouse_url));
 
             let mapping = &config.load_mapping().expect("unable to read mapping config");
 
-            let mut context = AppContext::new(client, ch_client);
+            let mut context = AppContext::new(client.clone(), ch_client);
 
             context
                 .bind_messages(mapping, &proto_context).await.expect("unable to create registry");
 
-            context.to_string();
+            for map in mapping {
+                let tx = client.begin_tx().await.expect("unable to begin tx");
+                
+                let mut kvs = tx.get_ranges(
+                    RangeOption {
+                        reverse: false,
+                        limit: None,
+                        ..RangeOption::from((map.from.as_bytes(), map.to.as_bytes()))
+                    },
+                    false,
+                );
 
-            // for map in mapping {
-            //     let tx = client.begin_tx().await.expect("unable to begin tx");
+                while let Some(kv) = kvs.next().await {
+                    let kv = match kv {
+                        Ok(kv) => kv,
+                        Err(e) => return Err(Error::Fdb(e)),
+                    };
 
-            //     let mut kvs = tx.get_ranges(
-            //         RangeOption {
-            //             reverse: false,
-            //             limit: None,
-            //             ..RangeOption::from((map.from.as_bytes(), map.to.as_bytes()))
-            //         },
-            //         false,
-            //     );
+                    for value in (*kv).into_iter() {
+                        let v = value.value();
 
-            //     while let Some(kv) = kvs.next().await {
-            //         let kv = match kv {
-            //             Ok(kv) => kv,
-            //             Err(e) => return Err(Error::Fdb(e)),
-            //         };
+                        let binding = match context.proto_registry.get(&map.proto) {
+                            Some(binding) => binding,
+                            None => continue
+                        };
 
-            //         let mut batch: Vec<HashMap<String, Value>> = vec![];
-            //         for value in (*kv).into_iter() {
-            //             let v = value.value();
+                        let res = match binding.prepare(&proto_context, v) {
+                            Ok(res) => res,
+                            Err(_e) => continue
+                        };
 
-            //             let value = match map_to_kv(
-            //                 &proto_context, 
-            //                 message, 
-            //                 v.to_vec()
-            //             ) {
-            //                 Ok(value) => value,
-            //                 Err(_e) => continue
-            //             };
+                        let query = binding.table.construct_query(res);
 
-            //             batch.push(value);
-            //         }
+                        context.ch_client.write_batch(query).await?;
+                    }
 
-            //         ch_client.write_batch(&table, batch).await?;
-            //     }
-            // }
+                }
+            }
         }
     }
 

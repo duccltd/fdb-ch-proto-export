@@ -15,7 +15,13 @@ pub fn load_config() -> Result<FdbCliConfig> {
                 "Found fdb-ch-proto-export configuration file (version: {:?})",
                 res.version
             );
-            res
+
+            let fdb_cluster_file = std::env::var("FDB_CLUSTER_FILE");
+
+            FdbCliConfig {
+                cluster_file: fdb_cluster_file.unwrap_or_else(|_| res.cluster_file),
+                ..res
+            }
         }
         Err(e) => return Err(Error::UnableToReadConfig(e)),
     };

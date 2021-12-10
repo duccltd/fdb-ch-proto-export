@@ -1,6 +1,8 @@
+use std::collections::{HashMap, BTreeMap};
+
 use protofish::{prelude::{MessageValue, Context, Value}, context::{MessageField, MessageInfo, ValueType}};
 
-use crate::{clickhouse::ClickhouseTableColumn, clickhouse_table::Table, error::Error};
+use crate::{clickhouse::ClickhouseTableColumn, clickhouse_table::Table, error::Error, protobuf::value_to_string};
 use lazy_static::lazy_static;
 use regex::Regex;
 use crate::{result::Result};
@@ -13,7 +15,7 @@ lazy_static! {
 pub struct MessageBinding<'a> {
     pub r#type: &'a MessageInfo,
     pub table: Table,
-    pub message_mappings: Vec<PreparedMessageField<'a>>
+    pub message_mappings: HashMap<usize, PreparedMessageField<'a>>
 }
 
 fn prepare<'a>(field: &'a MessageField, column: &ClickhouseTableColumn) -> Result<PreparedMessageField<'a>> {
@@ -69,22 +71,18 @@ fn prepare<'a>(field: &'a MessageField, column: &ClickhouseTableColumn) -> Resul
 pub fn bind_proto_message(message: &MessageInfo, table: Table) -> Result<MessageBinding> {
     println!("binding {} to {}. num columns: {}", &message.full_name, &table.parts.to_string(), table.columns.len());
 
-    let mut column_fields: Vec<PreparedMessageField> = Vec::with_capacity(table.columns.len());
+    let mut column_fields: HashMap<usize, PreparedMessageField> = HashMap::new();
 
-    message.iter_fields().try_for_each(
-        |field| {
-            let column_name = &field.name;
+    for field in message.iter_fields() {
+        let column_name = &field.name;
 
-            let table_column = match table.columns.iter().find(|c| &c.name == column_name) {
-                Some(col) => col,
-                None => return Err(Error::NoAvailableColumnBinding(format!("Column does not exist: column={}", column_name).into()))
-            };
+        let table_column = match table.columns.iter().find(|c| &c.name == column_name) {
+            Some(col) => col,
+            None => continue
+        };
 
-            column_fields.insert((table_column.position - 1) as usize, prepare(field, table_column)?);
-
-            Ok(())
-        }
-    )?;
+        column_fields.insert((table_column.position - 1) as usize, prepare(field, table_column)?);
+    }
     
     Ok(MessageBinding {
         r#type: message,
@@ -98,19 +96,14 @@ impl<'a> MessageBinding<'a> {
         &self,
         ctx: &Context,
         message: &[u8]
-    ) -> Result<Vec<Value>> {
+    ) -> Result<BTreeMap<usize, String>> {
         let data = self.r#type.decode(message, ctx);
 
-        println!("{:?}", data);
+        let mut results: BTreeMap<usize, String> = BTreeMap::new();
+        for (idx, field) in &self.message_mappings {
+            let value = field.prepare_field_value(ctx, &data)?;
 
-        // let kv = map_to_kv(ctx, self.r#type, message.to_vec())?;
-
-        // println!("{:?}", kv);
-
-        let mut results: Vec<Value> = Vec::with_capacity(self.message_mappings.len());
-
-        for (idx, field) in self.message_mappings.iter().enumerate() {
-            results.insert(idx, field.prepare_field_value(&data)?);
+            results.insert(idx.clone(), value);
         }
 
         Ok(results)
@@ -130,16 +123,33 @@ pub struct PreparedMessageField<'a> {
 impl<'a> PreparedMessageField<'a> {
     pub fn prepare_field_value(
         &self, 
+        ctx: &Context,
         message: &MessageValue
-    ) -> Result<Value> {
-        Ok(
-            message
+    ) -> Result<String> {
+        match message
                 .fields
                 .iter()
-                .find(|f| f.number == self.desc.number)
-                .unwrap()
-                .value
-                .clone()
-        )
+                .find(|f| f.number == self.desc.number) {
+            Some(field_value) => {
+                let field_value = field_value.value.clone();
+
+                value_to_string(ctx, &field_value)
+            }
+            None => {
+                if self.nullable {
+                    return Ok("NULL".to_string());
+                }
+                if self.default_expression != "" {
+                    return Ok(self.default_expression.clone())
+                }
+                Ok(match self.kind {
+                    ValueType::Bool => "false".to_string(),
+                    ValueType::String => "''".to_string(),
+                    ValueType::Message(_) => "{}".to_string(),
+                    // TODO: New error
+                    _ => return Err(Error::ParseError(format!("Could not find field or produce default for '{}' in message", self.desc.name)))
+                })
+            }
+        }
     }
 }

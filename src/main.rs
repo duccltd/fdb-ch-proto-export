@@ -102,16 +102,19 @@ async fn main() -> Result<()> {
 
                         let fields = match binding.prepare(&proto_context, v) {
                             Ok(res) => res,
-                            Err(_e) => continue
+                            Err(e) => {
+                                println!("Failed transforming message: {:?}", e);
+                                continue
+                            }
                         };
 
-                        let query = match binding.table.construct_query(&proto_context, fields) {
+                        let query = match binding.table.construct_query(fields) {
                             Ok(query) => query,
                             Err(_e) => continue
                         };
 
                         println!("{}", query);
-                        // context.ch_client.write_batch(query).await?;
+                        context.ch_client.write_batch(query).await? 
                     }
 
                 }

@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-use crate::clickhouse_table::{ClickhouseTableParts, Table};
+use crate::clickhouse_table::{ClickhouseTableParts};
 use crate::result::Result;
 use serde::{Deserialize, Serialize};
 

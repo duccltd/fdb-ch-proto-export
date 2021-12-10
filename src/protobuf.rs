@@ -99,7 +99,24 @@ pub fn value_to_string(
         Enum(v) => {
             let resolved = context.resolve_enum(v.enum_ref);
 
-            resolved.get_field_by_value(v.value).unwrap().name.clone()
+            format!("'{}'", resolved.get_field_by_value(v.value).unwrap().name.clone())
+        }
+
+        Message(v) => {
+            let resolved = context.resolve_message(v.msg_ref);
+
+            
+            let values: HashMap<std::string::String, std::string::String> = v.fields
+                .clone()
+                .into_iter()
+                .map(|field| {
+                    let name = &resolved.get_field(field.number).unwrap().name;
+
+                    (name.clone(), value_to_string(context, &field.value).unwrap())
+                })
+                .collect();
+
+            "".to_string()
         }
 
         _ => "UNSUPPORTED".to_string(),

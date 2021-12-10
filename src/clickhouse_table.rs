@@ -1,6 +1,6 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 
-use protofish::prelude::{MessageValue, Context, Value};
+use protofish::prelude::{Context, Value};
 
 use crate::{result::Result, error::Error, clickhouse::{Client, ClickhouseTableColumn}, protobuf::value_to_string};
 
@@ -56,21 +56,15 @@ impl Table {
     }
 
     pub fn construct_query(
-        &self, 
-        ctx: &Context,
-        fields: Vec<Value>
+        &self,
+        fields: BTreeMap<usize, String>
     ) -> Result<String> {
         let names = self.column_values();
-        // let placeholders: Vec<String> = names.iter().map(|_| "{}".to_string()).collect();
-        // let query = format!("({})", placeholders.join(","));
 
-        let mut values: Vec<String> = Vec::with_capacity(fields.len());
-        for (i, entry) in fields.iter().enumerate() {
-
-            let part = value_to_string(ctx, entry)?;
-
-            values.insert(i, part);
-        }
+        let values = fields
+            .values()
+            .cloned()
+            .collect::<Vec<String>>();
 
         Ok(format!("INSERT INTO {} ({}) VALUES ({})", self.parts.to_string(), names.join(","), values.join(",")))
     }

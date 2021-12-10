@@ -52,10 +52,6 @@ impl<'a> AppContext<'a> {
 
         let columns = self.ch_client.table_columns(table.clone()).await?;
 
-        for col in &columns {
-            println!("{} {} {}", col.name, col.position, col.r#type);
-        }
-
         Ok(Table::new(table, columns))
     }
 }

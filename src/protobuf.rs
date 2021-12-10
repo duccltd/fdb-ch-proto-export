@@ -106,7 +106,7 @@ pub fn value_to_string(
             let resolved = context.resolve_message(v.msg_ref);
 
             
-            let values: HashMap<std::string::String, std::string::String> = v.fields
+            let _values: HashMap<std::string::String, std::string::String> = v.fields
                 .clone()
                 .into_iter()
                 .map(|field| {
@@ -116,7 +116,7 @@ pub fn value_to_string(
                 })
                 .collect();
 
-            "".to_string()
+            "NULL".to_string()
         }
 
         _ => "UNSUPPORTED".to_string(),

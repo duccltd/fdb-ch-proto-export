@@ -4,6 +4,8 @@ A command-line tool to export FoundationDB stored Protocol buffers to Clickhouse
 
 ## Installation
 
+N/A
+
 ## Usage
 
 ```sh-session

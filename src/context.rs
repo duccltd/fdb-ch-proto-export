@@ -4,6 +4,7 @@ use std::sync::Arc;
 use crate::clickhouse_message_binding::MessageBinding;
 use crate::fdb::FdbClient;
 use crate::clickhouse::Client as ClickhouseClient;
+use tracing::*;
 
 pub type Registry<'a> = HashMap<String, MessageBinding<'a>>;
 
@@ -27,7 +28,7 @@ impl<'a> AppContext<'a> {
 
     pub fn to_string(&self) {
         for (key, value) in &self.proto_registry {
-            println!("{}: {}", key, value.table.parts.to_string());
+            info!("{}: {}", key, value.table.parts.to_string());
         }
     }
 }

@@ -1,11 +1,12 @@
 use std::collections::{HashMap, BTreeMap};
 
-use protofish::{prelude::{MessageValue, Context, Value}, context::{MessageField, MessageInfo, ValueType}};
+use protofish::{prelude::{MessageValue, Context}, context::{MessageField, MessageInfo, ValueType}};
 
 use crate::{clickhouse::ClickhouseTableColumn, clickhouse_table::Table, error::Error, protobuf::value_to_string};
 use lazy_static::lazy_static;
 use regex::Regex;
 use crate::{result::Result};
+use tracing::*;
 
 lazy_static! {
     static ref ENUM_REGEX: Regex = Regex::new(r"Enum(8|16)\(").unwrap();
@@ -69,7 +70,7 @@ fn prepare<'a>(field: &'a MessageField, column: &ClickhouseTableColumn) -> Resul
 }
 
 pub fn bind_proto_message(message: &MessageInfo, table: Table) -> Result<MessageBinding> {
-    println!("binding {} to {}. num columns: {}", &message.full_name, &table.parts.to_string(), table.columns.len());
+    info!("binding {} to {}. num columns: {}", &message.full_name, &table.parts.to_string(), table.columns.len());
 
     let mut column_fields: HashMap<usize, PreparedMessageField> = HashMap::new();
 
@@ -116,7 +117,7 @@ pub struct PreparedMessageField<'a> {
     kind: ValueType,
 
     nullable: bool,
-    int_size: i32,
+    _int_size: i32,
     default_expression: String,
 }
 

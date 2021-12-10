@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use clickhouse::Client;
-use fdb_ch_proto_export::clickhouse_message_binding::MessageBinding;
 use fdb_ch_proto_export::context::AppContext;
 use fdb_ch_proto_export::cli;
 use fdb_ch_proto_export::{result::Result, fdb::FdbClient, config, error::Error, protobuf::load_protobufs, clickhouse::Client as ClickhouseClient};
@@ -49,11 +48,11 @@ async fn main() -> Result<()> {
                         Err(e) => panic!("writing config file: {}", e),
                     }
                 } else {
-                    println!("Options are cluster-file, proto-file and mapping-file")
+                    info!("Options are cluster-file, proto-file and mapping-file")
                 }
             }
             cli::Setup::View => {
-                println!("{:?}", config);
+                info!("{:?}", config);
             }
         }
         cli::Opts::Export => {
@@ -109,7 +108,7 @@ async fn main() -> Result<()> {
                         let fields = match binding.prepare(&proto_context, v) {
                             Ok(res) => res,
                             Err(e) => {
-                                println!("Failed transforming message: {:?}", e);
+                                error!("Failed transforming message: {:?}", e);
                                 continue
                             }
                         };
@@ -127,7 +126,7 @@ async fn main() -> Result<()> {
                     messages_written += batch.len()
                 }
 
-                println!("{} messages written to {}", messages_written, binding.table.parts.to_string())
+                info!("{} messages written to {}", messages_written, binding.table.parts.to_string())
             }
         }
     }

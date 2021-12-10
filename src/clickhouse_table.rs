@@ -1,8 +1,6 @@
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{BTreeMap};
 
-use protofish::prelude::{Context, Value};
-
-use crate::{result::Result, error::Error, clickhouse::{Client, ClickhouseTableColumn}, protobuf::value_to_string};
+use crate::{result::Result, error::Error, clickhouse::{Client, ClickhouseTableColumn}};
 
 #[derive(Clone)]
 pub struct ClickhouseTableParts {

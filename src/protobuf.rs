@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::error::Error;
 use crate::result::Result;
-use protofish::context::{Context};
+use protofish::{context::{Context}, prelude::Value};
 use std::path::Path;
 
 pub async fn load_protobufs(path: impl AsRef<Path>) -> Result<Context> {
@@ -105,8 +105,18 @@ pub fn value_to_string(
         Message(v) => {
             let resolved = context.resolve_message(v.msg_ref);
 
+            let mut fields = v.fields.clone().into_iter();
+
+            // Handle google protobuf timestamp
+            if resolved.full_name == "google.protobuf.Timestamp" {
+                if let Some(seconds) = fields.find(|f| f.number == 1) {
+                    if let Value::Int64(v) = seconds.value {
+                        return Ok(v.to_string());
+                    }
+                }
+            }
             
-            let _values: HashMap<std::string::String, std::string::String> = v.fields
+            let values: HashMap<std::string::String, std::string::String> = v.fields
                 .clone()
                 .into_iter()
                 .map(|field| {
@@ -116,7 +126,10 @@ pub fn value_to_string(
                 })
                 .collect();
 
-            "NULL".to_string()
+            let v = serde_json::to_string(&values)?;
+
+            // Sub object will serialize strings with ''
+            v.to_string().replace("'", "")
         }
 
         _ => return Err(Error::ParseError("Unsupported prototype".into())),

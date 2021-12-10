@@ -14,7 +14,8 @@ pub enum Error {
     Clickhouse(Arc<clickhouse::error::Error>),
     ParseError(String),
     StringDecodeError(std::string::FromUtf8Error),
-    NoAvailableColumnBinding(String)
+    NoAvailableColumnBinding(String),
+    NoProtoDefault(String)
 }
 
 impl std::fmt::Display for Error {
@@ -36,7 +37,8 @@ impl std::fmt::Display for Error {
             Error::Clickhouse(ref e) => write!(f, "Clickhouse error: {:?}", e),
             Error::ParseError(ref e) => write!(f, "Unable to parse: {:?}", e),
             Error::StringDecodeError(ref e) => write!(f, "String decode error: {}", e),
-            Error::NoAvailableColumnBinding(ref e) => write!(f, "No column binding available for column: {:?}", e)
+            Error::NoAvailableColumnBinding(ref e) => write!(f, "No column binding available for column: {:?}", e),
+            Error::NoProtoDefault(ref e) => write!(f, "Could not find field or produce default: {:?}", e)
         }
     }
 }

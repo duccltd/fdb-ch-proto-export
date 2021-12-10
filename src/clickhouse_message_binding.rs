@@ -133,8 +133,12 @@ impl<'a> PreparedMessageField<'a> {
                 .find(|f| f.number == self.desc.number) {
             Some(field_value) => {
                 let field_value = field_value.value.clone();
+                let value = value_to_string(ctx, &field_value)?;
 
-                value_to_string(ctx, &field_value)
+                Ok(match self.kind {
+                    ValueType::Message(_) => format!("'{}'", value),
+                    _ => value
+                })
             }
             None => {
                 if self.nullable {
@@ -147,8 +151,7 @@ impl<'a> PreparedMessageField<'a> {
                     ValueType::Bool => "false".to_string(),
                     ValueType::String => "''".to_string(),
                     ValueType::Message(_) => "{}".to_string(),
-                    // TODO: New error
-                    _ => return Err(Error::ParseError(format!("Could not find field or produce default for '{}' in message", self.desc.name)))
+                    _ => return Err(Error::NoProtoDefault(format!("For '{}' in message", self.desc.name)))
                 })
             }
         }

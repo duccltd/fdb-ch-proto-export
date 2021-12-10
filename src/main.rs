@@ -1,6 +1,8 @@
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use clickhouse::Client;
+use fdb_ch_proto_export::clickhouse_message_binding::MessageBinding;
 use fdb_ch_proto_export::context::AppContext;
 use fdb_ch_proto_export::cli;
 use fdb_ch_proto_export::{result::Result, fdb::FdbClient, config, error::Error, protobuf::load_protobufs, clickhouse::Client as ClickhouseClient};
@@ -75,6 +77,11 @@ async fn main() -> Result<()> {
                 .bind_messages(mapping, &proto_context).await.expect("unable to create registry");
 
             for map in mapping {
+                let binding = match context.proto_registry.get(&map.proto) {
+                    Some(binding) => binding,
+                    None => continue
+                };
+
                 let tx = client.begin_tx().await.expect("unable to begin tx");
                 
                 let mut kvs = tx.get_ranges(
@@ -86,19 +93,18 @@ async fn main() -> Result<()> {
                     false,
                 );
 
+                let mut messages_written = 0;
                 while let Some(kv) = kvs.next().await {
                     let kv = match kv {
                         Ok(kv) => kv,
                         Err(e) => return Err(Error::Fdb(e)),
                     };
 
+                    // TODO: Extract batch writing out
+                    let mut batch: Vec<BTreeMap<usize, String>> = vec![];
+
                     for value in (*kv).into_iter() {
                         let v = value.value();
-
-                        let binding = match context.proto_registry.get(&map.proto) {
-                            Some(binding) => binding,
-                            None => continue
-                        };
 
                         let fields = match binding.prepare(&proto_context, v) {
                             Ok(res) => res,
@@ -108,16 +114,20 @@ async fn main() -> Result<()> {
                             }
                         };
 
-                        let query = match binding.table.construct_query(fields) {
-                            Ok(query) => query,
-                            Err(_e) => continue
-                        };
-
-                        println!("{}", query);
-                        context.ch_client.write_batch(query).await? 
+                        batch.push(fields);
                     }
 
+                    let query = match binding.table.construct_batch(batch.clone()) {
+                        Ok(query) => query,
+                        Err(_e) => continue
+                    };
+
+                    context.ch_client.write_batch(query).await?;
+
+                    messages_written += batch.len()
                 }
+
+                println!("{} messages written to {}", messages_written, binding.table.parts.to_string())
             }
         }
     }

@@ -1,10 +1,8 @@
-use std::collections::HashMap;
 use std::time::Duration;
 
 use foundationdb::api::{FdbApiBuilder, NetworkAutoStop};
-use foundationdb::{Database, RangeOption, Transaction};
+use foundationdb::{Database, Transaction};
 use tokio::time::timeout;
-use tracing::*;
 use crate::result::Result;
 
 pub struct FdbClient {
@@ -32,49 +30,5 @@ impl FdbClient {
             Ok(tx) => tx,
             Err(e) => Err(e.into()),
         }
-    }
-
-    pub async fn get<'a>(&self, tx: &'a Transaction, key: &'a [u8]) -> Result<Option<Vec<u8>>> {
-        debug!("get {}", String::from_utf8_lossy(key));
-        let opt_val = tx.get(key, false).await?;
-        let val = match opt_val {
-            None => return Ok(None),
-            Some(val) => val,
-        };
-        Ok(Some((*val).to_vec()))
-    }
-
-    pub async fn get_range<'a>(
-        &self,
-        tx: &'a Transaction,
-        from: &'a [u8],
-        to: &'a [u8],
-    ) -> Result<HashMap<Vec<u8>, Vec<u8>>> {
-        debug!(
-            "get_range {} {}",
-            String::from_utf8_lossy(from),
-            String::from_utf8_lossy(to),
-        );
-
-        let values = tx
-            .get_range(
-                &RangeOption {
-                    reverse: false,
-                    limit: None,
-                    mode: foundationdb::options::StreamingMode::WantAll,
-                    ..RangeOption::from((from, to))
-                },
-                1,
-                false,
-            )
-            .await?;
-
-        // Ok(values.into_iter().map(|kv| kv.key().to_vec()).collect())
-        let mut map: HashMap<Vec<u8>, Vec<u8>> = HashMap::new();
-        values.into_iter().for_each(|kv| {
-            map.insert(kv.key().to_vec(), kv.value().to_vec());
-        });
-
-        Ok(map)
     }
 }

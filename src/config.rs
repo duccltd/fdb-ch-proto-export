@@ -1,3 +1,5 @@
+use std::{fs::File, io::Read};
+
 use crate::error::Error;
 use crate::result::Result;
 use serde::{Deserialize, Serialize};
@@ -20,10 +22,6 @@ pub fn load_config() -> Result<FdbCliConfig> {
     Ok(config)
 }
 
-pub fn load_mapping() -> Result<Vec<Mapping>> {
-    Ok(vec![])
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Mapping {
     pub from: String,
@@ -40,6 +38,9 @@ pub struct FdbCliConfig {
     // path to cluster file
     pub cluster_file: String,
 
+    // clickhouse url
+    pub clickhouse_url: String,
+
     // path to the protobuf file
     pub proto_file: Option<String>,
 
@@ -54,8 +55,9 @@ impl std::default::Default for FdbCliConfig {
         Self {
             version: VERSION.to_string(),
             cluster_file: String::from(path),
+            clickhouse_url: "http://localhost:8083".to_string(),
             proto_file: None,
-            mapping_file: None
+            mapping_file: None,
         }
     }
 }
@@ -69,6 +71,20 @@ impl FdbCliConfig {
             // All other types are unix based systems
             _ => "/etc/foundationdb/fdb.cluster",
         }
+    }
+
+    pub fn load_mapping(&self) -> Result<Vec<Mapping>> {
+        let mapping_file = match &self.mapping_file {
+            Some(file) => file,
+            None => return Err(Error::InvalidMappingConfig("Mapping config not provided".into()))
+        };
+
+        let mut file = File::open(&mapping_file)?;
+        let mut data = String::new();
+
+        file.read_to_string(&mut data)?;
+
+        Ok(serde_json::from_str::<Vec<Mapping>>(&data)?)
     }
 
     pub fn write(&self) -> Result<()> {

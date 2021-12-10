@@ -119,7 +119,7 @@ pub fn value_to_string(
             "NULL".to_string()
         }
 
-        _ => "UNSUPPORTED".to_string(),
+        _ => return Err(Error::ParseError("Unsupported prototype".into())),
 
         // Value which was incomplete due to missing bytes in the payload.
         // Incomplete(_, v) => serde_json::Value::String(format!(

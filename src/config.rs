@@ -5,7 +5,7 @@ use crate::result::Result;
 use serde::{Deserialize, Serialize};
 use tracing::*;
 
-const CONFIGURATION_NAME: &str = "fdb-proto-cli";
+const CONFIGURATION_NAME: &str = "fdb-ch-proto-export";
 const VERSION: &str = "0.1.0";
 
 pub fn load_config() -> Result<FdbCliConfig> {

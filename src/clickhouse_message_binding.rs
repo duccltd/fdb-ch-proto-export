@@ -64,7 +64,7 @@ fn prepare<'a>(field: &'a MessageField, column: &ClickhouseTableColumn) -> Resul
         kind: field.field_type.clone(),
 
         nullable,
-        int_size,
+        _int_size: int_size,
         default_expression: column.default_expression.clone(),
     })
 }

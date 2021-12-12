@@ -27,5 +27,6 @@ RUN curl -O https://www.foundationdb.org/downloads/6.2.25/ubuntu/installers/foun
     dpkg -i foundationdb-clients_6.2.25-1_amd64.deb
 
 COPY --from=builder /app/target/release/fdb-ch-proto-export .
+COPY --from=builder /app/google_protobuf .
 
 ENTRYPOINT [ "/fdb-ch-proto-export" ]

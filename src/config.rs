@@ -21,10 +21,17 @@ pub fn load_config() -> Result<FdbCliConfig> {
                 res.version
             );
 
-            let fdb_cluster_file = std::env::var("FDB_CLUSTER_FILE");
+            // Defaults that are all overidable
+            let cluster_file = std::env::var("FDB_CLUSTER_FILE").unwrap_or_else(|_| res.cluster_file);
+            let clickhouse_url = std::env::var("CLICKHOUSE_URL").unwrap_or_else(|_| res.clickhouse_url);
+            let proto_file = Some(std::env::var("PROTO_FILE").unwrap_or_else(|_| res.proto_file.unwrap()));
+            let mapping_file = Some(std::env::var("MAPPING_FILE").unwrap_or_else(|_| res.mapping_file.unwrap()));
 
             FdbCliConfig {
-                cluster_file: fdb_cluster_file.unwrap_or_else(|_| res.cluster_file),
+                cluster_file,
+                clickhouse_url,
+                proto_file,
+                mapping_file,
                 ..res
             }
         }

@@ -4,12 +4,17 @@ use crate::error::Error;
 use crate::result::Result;
 use serde::{Deserialize, Serialize};
 use tracing::*;
+use lazy_static::lazy_static;
 
-const CONFIGURATION_NAME: &str = "fdb-ch-proto-export";
+lazy_static! {
+    pub static ref CONFIGURATION_PATH: String =
+        std::env::var("CONFIGURATION_PATH").unwrap_or_else(|_| "fdb-ch-proto-export.toml".to_owned());
+}
+
 const VERSION: &str = "0.1.0";
 
 pub fn load_config() -> Result<FdbCliConfig> {
-    let config = match confy::load::<FdbCliConfig>(CONFIGURATION_NAME) {
+    let config = match confy::load::<FdbCliConfig>(&CONFIGURATION_PATH.to_string()) {
         Ok(res) => {
             info!(
                 "Found fdb-ch-proto-export configuration file (version: {:?})",
@@ -94,6 +99,6 @@ impl FdbCliConfig {
     }
 
     pub fn write(&self) -> Result<()> {
-        confy::store(CONFIGURATION_NAME, self).map_err(Error::UnableToWriteConfig)
+        confy::store(&CONFIGURATION_PATH.to_string(), self).map_err(Error::UnableToWriteConfig)
     }
 }

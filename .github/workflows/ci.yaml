@@ -1,0 +1,18 @@
+name: Publish Docker image
+
+jobs:
+  push_to_registry:
+    name: Push image to GHCR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Docker build
+        run: docker build -t ghcr.io/duccltd/fdb-ch-proto-export:latest .
+
+      - name: Docker login
+        run: echo ${{ secrets.ACTOR_TOKEN }} | docker login ghcr.io -u ${{ secrets.ACTOR_NAME }} --password-stdin
+
+      - name: Docker pushs
+        run: docker push ghcr.io/ducc/fdb-ch-proto-export:latest

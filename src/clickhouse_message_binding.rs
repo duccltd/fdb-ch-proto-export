@@ -28,16 +28,15 @@ pub fn bind_proto_message(message: &MessageInfo, table: Table) -> Result<Message
 
     let mut column_fields: HashMap<usize, PreparedMessageField> = HashMap::new();
 
-    let mut message_fields = message.iter_fields();
     for column in &table.columns {
-        match message_fields.find(|f| &f.name == &column.name) {
+        match message.iter_fields().find(|f| &f.name == &column.name) {
             Some(field) => {
                 column_fields.insert((column.position - 1) as usize, prepare(&column, field)?);
             },
             None => continue
         };
     }
-    
+
     Ok(MessageBinding {
         r#type: message,
         table,
@@ -54,6 +53,7 @@ impl<'a> MessageBinding<'a> {
         let data = self.r#type.decode(message, ctx);
 
         let mut results: BTreeMap<usize, String> = BTreeMap::new();
+
         for (idx, field) in &self.message_mappings {
             let value = field.prepare_field_value(ctx, &data)?;
 

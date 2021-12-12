@@ -13,15 +13,6 @@ lazy_static! {
 
 const VERSION: &str = "0.1.0";
 
-fn get_environment_var<T>(var: &str, default: T) -> Result<T> {
-    let env_var = std::env::var(var);
-    if env_var.is_ok() {
-        info!("Found environment variable override for {}: {}", var, env_var.clone().unwrap());
-        env_var.unwrap();
-    }
-    Ok(default)
-}
-
 pub fn load_config() -> Result<FdbCliConfig> {
     let config = match confy::load::<FdbCliConfig>(&CONFIGURATION_PATH.to_string()) {
         Ok(res) => {
@@ -31,10 +22,37 @@ pub fn load_config() -> Result<FdbCliConfig> {
             );
 
             // Defaults that are all overidable
-            let cluster_file = get_environment_var("FDB_CLUSTER_FILE", res.cluster_file)?;
-            let clickhouse_url = get_environment_var("CLICKHOUSE_URL", res.clickhouse_url)?;
-            let proto_file = get_environment_var("PROTO_FILE", res.proto_file)?;
-            let mapping_file = get_environment_var("MAPPING_FILE", res.mapping_file)?;
+            let cluster_file = match std::env::var("FDB_CLUSTER_FILE") {
+                Ok(cluster_file) => {
+                    info!("Found environment variable override for FDB_CLUSTER_FILE: {}", &cluster_file);
+                    cluster_file    
+                },
+                Err(_e) => res.cluster_file
+            };
+
+            let clickhouse_url = match std::env::var("CLICKHOUSE_URL") {
+                Ok(clickhouse_url) => {
+                    info!("Found environment variable override for CLICKHOUSE_URL: {}", &clickhouse_url);
+                    clickhouse_url
+                },
+                Err(_e) => res.clickhouse_url
+            };
+
+            let proto_file = match std::env::var("PROTO_FILE") {
+                Ok(proto_file) => {
+                    info!("Found environment variable override for PROTO_FILE: {}", &proto_file);
+                    Some(proto_file)
+                },
+                Err(_e) => res.proto_file
+            };
+
+            let mapping_file = match std::env::var("MAPPING_FILE") {
+                Ok(mapping_file) => {
+                    info!("Found environment variable override for MAPPING_FILE: {}", &mapping_file);
+                    Some(mapping_file)
+                },
+                Err(_e) => res.mapping_file
+            };
 
             FdbCliConfig {
                 cluster_file,

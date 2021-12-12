@@ -16,6 +16,8 @@ async fn main() -> Result<()> {
     
     let mut config = config::load_config().expect("unable to load config");
 
+    println!("{:?}", config);
+
     let opts = cli::parse();
 
     match opts {

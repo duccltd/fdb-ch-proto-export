@@ -57,14 +57,21 @@ async fn main() -> Result<()> {
         }
         cli::Opts::Export => {
             let proto_context = match &config.proto_file {
-                Some(path) => load_protobufs(&path).await?,
-                None => return Err(Error::ParseError("Missing protofile definition".into())),
+                Some(path) => {
+                    info!("Using protofile path: {}", path);
+                    load_protobufs(&path).await?
+                },
+                None => return Err(Error::MissingConfig("Missing protofile definition".into())),
             };
 
             #[allow(unused)]
             let guard = unsafe { FdbClient::start_network() }.expect("unable to start network");
 
+            info!("Using fdb cluster file path: {}", &config.cluster_file);
+
             let client = Arc::new(FdbClient::new(&config.cluster_file).expect("unable to start client"));
+
+            info!("Using clickhouse url: {}", &config.clickhouse_url);
 
             let ch_client = ClickhouseClient::new(Client::default().with_url(&config.clickhouse_url));
 

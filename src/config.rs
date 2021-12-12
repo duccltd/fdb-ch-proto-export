@@ -13,6 +13,15 @@ lazy_static! {
 
 const VERSION: &str = "0.1.0";
 
+fn get_environment_var<T>(var: &str, default: T) -> Result<T> {
+    let env_var = std::env::var(var);
+    if env_var.is_ok() {
+        info!("Found environment variable override for {}: {}", var, env_var.clone().unwrap());
+        env_var.unwrap();
+    }
+    Ok(default)
+}
+
 pub fn load_config() -> Result<FdbCliConfig> {
     let config = match confy::load::<FdbCliConfig>(&CONFIGURATION_PATH.to_string()) {
         Ok(res) => {
@@ -22,10 +31,10 @@ pub fn load_config() -> Result<FdbCliConfig> {
             );
 
             // Defaults that are all overidable
-            let cluster_file = std::env::var("FDB_CLUSTER_FILE").unwrap_or_else(|_| res.cluster_file);
-            let clickhouse_url = std::env::var("CLICKHOUSE_URL").unwrap_or_else(|_| res.clickhouse_url);
-            let proto_file = Some(std::env::var("PROTO_FILE").unwrap_or_else(|_| res.proto_file.unwrap()));
-            let mapping_file = Some(std::env::var("MAPPING_FILE").unwrap_or_else(|_| res.mapping_file.unwrap()));
+            let cluster_file = get_environment_var("FDB_CLUSTER_FILE", res.cluster_file)?;
+            let clickhouse_url = get_environment_var("CLICKHOUSE_URL", res.clickhouse_url)?;
+            let proto_file = get_environment_var("PROTO_FILE", res.proto_file)?;
+            let mapping_file = get_environment_var("MAPPING_FILE", res.mapping_file)?;
 
             FdbCliConfig {
                 cluster_file,
@@ -93,8 +102,11 @@ impl FdbCliConfig {
 
     pub fn load_mapping(&self) -> Result<Vec<Mapping>> {
         let mapping_file = match &self.mapping_file {
-            Some(file) => file,
-            None => return Err(Error::InvalidMappingConfig("Mapping config not provided".into()))
+            Some(file) => {
+                info!("Using mapping file path: {}", file);
+                file
+            },
+            None => return Err(Error::MissingConfig("Mapping config not provided".into()))
         };
 
         let mut file = File::open(&mapping_file)?;

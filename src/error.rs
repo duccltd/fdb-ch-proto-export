@@ -15,7 +15,8 @@ pub enum Error {
     ParseError(String),
     StringDecodeError(std::string::FromUtf8Error),
     NoAvailableColumnBinding(String),
-    NoProtoDefault(String)
+    NoProtoDefault(String),
+    MissingConfig(String)
 }
 
 impl std::fmt::Display for Error {
@@ -38,7 +39,8 @@ impl std::fmt::Display for Error {
             Error::ParseError(ref e) => write!(f, "Unable to parse: {:?}", e),
             Error::StringDecodeError(ref e) => write!(f, "String decode error: {}", e),
             Error::NoAvailableColumnBinding(ref e) => write!(f, "No column binding available for column: {:?}", e),
-            Error::NoProtoDefault(ref e) => write!(f, "Could not find field or produce default: {:?}", e)
+            Error::NoProtoDefault(ref e) => write!(f, "Could not find field or produce default: {:?}", e),
+            Error::MissingConfig(ref e) => write!(f, "Could not find config: {:?}", e),
         }
     }
 }

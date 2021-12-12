@@ -15,9 +15,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
     
     let mut config = config::load_config().expect("unable to load config");
-
-    println!("{:?}", config);
-
+    
     let opts = cli::parse();
 
     match opts {

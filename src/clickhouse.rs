@@ -3,7 +3,7 @@ use crate::result::Result;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, clickhouse::Row, Serialize, Deserialize, Clone)]
-pub struct ClickhouseTableColumn {
+pub struct ClickhouseTableColumnRow {
     pub name: String,
     pub position: u64,
     pub r#type: String,
@@ -19,14 +19,14 @@ impl Client {
         Self { client }
     }
 
-    pub async fn table_columns(&self, table: ClickhouseTableParts) -> Result<Vec<ClickhouseTableColumn>> {
+    pub async fn table_columns(&self, table: ClickhouseTableParts) -> Result<Vec<ClickhouseTableColumnRow>> {
         let rows = self.client
             .query(
                 "SELECT name, position, type, default_expression FROM system.columns WHERE database = ? AND table = ? ORDER BY position"
             )
             .bind(&table.database)
             .bind(&table.table)
-            .fetch_all::<ClickhouseTableColumn>()
+            .fetch_all::<ClickhouseTableColumnRow>()
             .await
             .map_err(|e| {
                 format!("querying table columns: {}", &e);

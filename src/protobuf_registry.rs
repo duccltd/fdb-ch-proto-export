@@ -1,4 +1,5 @@
 use protofish::{context::MessageInfo, prelude::Context};
+use tracing::info;
 
 use crate::{result::Result, config::Mapping, error::Error, clickhouse_table::{ClickhouseTableParts, Table}, context::{AppContext}, clickhouse_message_binding::bind_proto_message};
 
@@ -24,7 +25,13 @@ impl<'a> AppContext<'a> {
                 )
             }
 
-            self.bind_message(message, &mapping.table).await?;
+            let table = self.construct_table(&mapping.table).await?;
+            if table.columns.len() == 0 {
+                info!("Skipping mapping for table as found no columns: table={}", &table.parts.table);
+                continue;
+            }
+
+            self.bind_message(message, table).await?;
         }
 
         Ok(())
@@ -33,10 +40,8 @@ impl<'a> AppContext<'a> {
     async fn bind_message(
         &mut self,
         message: &'a MessageInfo, 
-        table_name: &String
+        table: Table
     ) -> Result<()> {
-        let table = self.construct_table(table_name).await?;
-
         let binding = bind_proto_message(message, table)?;
         
         self.proto_registry.insert(message.full_name.clone(), binding);
@@ -48,9 +53,14 @@ impl<'a> AppContext<'a> {
         &self,
         table_name: &String
     ) -> Result<Table> {
-        let table = ClickhouseTableParts::from_string(&table_name)?;
+         let table = ClickhouseTableParts::from_string(&table_name)?;
 
-        let columns = self.ch_client.table_columns(table.clone()).await?;
+        let mut columns = vec![];
+        for column in self.ch_client
+            .table_columns(table.clone())
+            .await? {
+            columns.push(column.try_into()?);
+        }
 
         Ok(Table::new(table, columns))
     }

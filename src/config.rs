@@ -121,7 +121,7 @@ impl FdbCliConfig {
     pub fn load_mapping(&self) -> Result<Vec<Mapping>> {
         let mapping_file = match &self.mapping_file {
             Some(file) => {
-                info!("Using mapping file path: {}", file);
+                debug!("Using mapping file path: {}", file);
                 file
             },
             None => return Err(Error::MissingConfig("Mapping config not provided".into()))

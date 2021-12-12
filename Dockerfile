@@ -11,6 +11,8 @@ WORKDIR /app
 
 COPY . .
 
+RUN rustup default nightly && rustup update
+
 RUN cargo build --release
 
 FROM debian:buster-slim

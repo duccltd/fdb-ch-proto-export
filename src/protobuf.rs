@@ -78,7 +78,7 @@ pub fn value_to_string(
         SFixed32(v) => v.to_string(),
         SFixed64(v) => v.to_string(),
         Bool(v) => v.to_string(),
-        String(v) => format!("'{}'", v),
+        String(v) => format!("'{}'", v.replace("'", "\\'")),
 
         // Packed(v) => match v {
         //     PackedArray::Double(v) => to_value(v)?,

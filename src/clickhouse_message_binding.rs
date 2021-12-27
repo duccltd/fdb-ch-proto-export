@@ -13,16 +13,6 @@ pub struct MessageBinding<'a> {
     pub message_mappings: HashMap<usize, PreparedMessageField<'a>>
 }
 
-fn prepare<'a>(column: &TableColumn, field: &'a MessageField) -> Result<PreparedMessageField<'a>> {
-    
-
-    Ok(PreparedMessageField {
-        desc: field,
-        kind: field.field_type.clone(),
-        column: column.clone()
-    })
-}
-
 pub fn bind_proto_message(message: &MessageInfo, table: Table) -> Result<MessageBinding> {
     info!("binding {} to {}. num columns: {}", &message.full_name, &table.parts.to_string(), table.columns.len());
 
@@ -31,7 +21,11 @@ pub fn bind_proto_message(message: &MessageInfo, table: Table) -> Result<Message
     for column in &table.columns {
         match message.iter_fields().find(|f| &f.name == &column.name) {
             Some(field) => {
-                column_fields.insert((column.position - 1) as usize, prepare(&column, field)?);
+                column_fields.insert((column.position - 1) as usize, PreparedMessageField {
+                    desc: field,
+                    kind: field.field_type.clone(),
+                    column: column.clone()
+                });
             },
             None => continue
         };

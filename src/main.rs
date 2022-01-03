@@ -96,49 +96,70 @@ async fn main() -> Result<()> {
                     None => continue,
                 };
 
-                let tx = client.begin_tx().await.expect("unable to begin tx");
-
-                let mut kvs = tx.get_ranges(
-                    RangeOption {
-                        reverse: false,
-                        limit: None,
-                        ..RangeOption::from((map.from.as_bytes(), map.to.as_bytes()))
-                    },
-                    false,
-                );
-
                 let mut messages_written = 0;
-                while let Some(kv) = kvs.next().await {
-                    let kv = match kv {
-                        Ok(kv) => kv,
-                        Err(e) => return Err(Error::Fdb(e)),
-                    };
 
-                    // TODO: Extract batch writing out
-                    let mut batch: Vec<BTreeMap<usize, String>> = vec![];
+                let mut from = map.from.as_bytes().to_vec();
+                let to = map.to.as_bytes();
 
-                    for value in (*kv).into_iter() {
-                        let v = value.value();
+                'retry: loop {
+                    let tx = client.begin_tx().await.expect("unable to begin tx");
 
-                        let fields = match binding.prepare(&proto_context, v) {
-                            Ok(res) => res,
+                    let range_from = from.clone();
+
+                    let mut kvs = tx.get_ranges(
+                        RangeOption {
+                            reverse: false,
+                            limit: None,
+                            ..RangeOption::from((range_from.as_ref(), to))
+                        },
+                        false,
+                    );
+
+                    while let Some(kv) = kvs.next().await {
+                        let kv = match kv {
+                            Ok(kv) => kv,
                             Err(e) => {
-                                error!("Failed transforming message: {:?}", e);
-                                continue;
+                                // 1007: Transaction is too old to perform reads or be committed
+                                // We restart the transaction from the last read key.
+                                if e.code() == 1007 {
+                                    continue 'retry;
+                                }
+
+                                return Err(Error::Fdb(e));
                             }
                         };
 
-                        batch.push(fields);
+                        // TODO: Extract batch writing out
+                        let mut batch: Vec<BTreeMap<usize, String>> = vec![];
+
+                        for value in (*kv).into_iter() {
+                            let k = value.key().to_vec();
+                            let v = value.value();
+
+                            let fields = match binding.prepare(&proto_context, v) {
+                                Ok(res) => res,
+                                Err(e) => {
+                                    error!("Failed transforming message: {:?}", e);
+                                    continue;
+                                }
+                            };
+
+                            from = k;
+                            batch.push(fields);
+                        }
+
+                        let query = match binding.table.construct_batch(batch.clone()) {
+                            Ok(query) => query,
+                            Err(_e) => continue,
+                        };
+
+                        context.ch_client.write_batch(query).await?;
+
+                        messages_written += batch.len()
                     }
 
-                    let query = match binding.table.construct_batch(batch.clone()) {
-                        Ok(query) => query,
-                        Err(_e) => continue,
-                    };
-
-                    context.ch_client.write_batch(query).await?;
-
-                    messages_written += batch.len()
+                    // We have read all the keys in this range
+                    break;
                 }
 
                 info!(

@@ -132,6 +132,8 @@ async fn main() -> Result<()> {
                         // TODO: Extract batch writing out
                         let mut batch: Vec<BTreeMap<usize, String>> = vec![];
 
+                        let mut last_read_key = None;
+
                         for value in (*kv).into_iter() {
                             let k = value.key().to_vec();
                             let v = value.value();
@@ -144,7 +146,7 @@ async fn main() -> Result<()> {
                                 }
                             };
 
-                            from = k;
+                            last_read_key = Some(k);
                             batch.push(fields);
                         }
 
@@ -154,6 +156,10 @@ async fn main() -> Result<()> {
                         };
 
                         context.ch_client.write_batch(query).await?;
+
+                        if let Some(last_read_key) = last_read_key {
+                            from = last_read_key;
+                        }
 
                         messages_written += batch.len()
                     }

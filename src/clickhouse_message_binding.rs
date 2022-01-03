@@ -92,6 +92,7 @@ impl<'a> PreparedMessageField<'a> {
                             ValueType::Bool => "false".to_string(),
                             ValueType::String => "''".to_string(),
                             ValueType::Message(_) => "{}".to_string(),
+                            ValueType::Enum(_) => "''".to_string(),
                             _ => return Err(Error::NoProtoDefault(format!("For '{}' in message", self.desc.name)))
                         })
                     }

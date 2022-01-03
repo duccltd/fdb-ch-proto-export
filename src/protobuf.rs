@@ -133,6 +133,8 @@ pub fn value_to_string(
             v.to_string().replace("'", "")
         }
 
+        Unknown(_) => return Err(Error::UnknownValueType),
+
         _ => {
             error!("Unable to convert proto value to string: {:?}", value);
             return Err(Error::ParseError("Unsupported prototype".into()));

@@ -60,7 +60,19 @@ impl<'a> MessageBinding<'a> {
         let mut results: BTreeMap<usize, String> = BTreeMap::new();
 
         for (idx, field) in &self.message_mappings {
-            let value = field.prepare_field_value(ctx, &data)?;
+            let value = match field.prepare_field_value(ctx, &data) {
+                Ok(v) => v,
+                Err(e) => {
+                    if let Error::UnknownValueType = e {
+                        warn!(
+                            "Skipping field with unknown value type: {}",
+                            field.desc.name
+                        );
+                        continue;
+                    }
+                    return Err(e);
+                }
+            };
 
             results.insert(idx.clone(), value);
         }
@@ -94,6 +106,17 @@ impl<'a> PreparedMessageField<'a> {
                     ValueType::String => "''".to_string(),
                     ValueType::Message(_) => "{}".to_string(),
                     ValueType::Enum(_) => "''".to_string(),
+                    ValueType::Double
+                    | ValueType::Float
+                    | ValueType::Int32
+                    | ValueType::Int64
+                    | ValueType::UInt32
+                    | ValueType::UInt64
+                    | ValueType::SInt32
+                    | ValueType::SInt64
+                    | ValueType::Fixed32
+                    | ValueType::Fixed64
+                    | ValueType::SFixed32 => "0".to_string(),
                     _ => {
                         return Err(Error::NoProtoDefault(format!(
                             "For '{}' in message",

@@ -17,6 +17,7 @@ pub enum Error {
     NoAvailableColumnBinding(String),
     NoProtoDefault(String),
     MissingConfig(String),
+    UnknownValueType,
 }
 
 impl std::fmt::Display for Error {
@@ -45,6 +46,7 @@ impl std::fmt::Display for Error {
                 write!(f, "Could not find field or produce default: {:?}", e)
             }
             Error::MissingConfig(ref e) => write!(f, "Could not find config: {:?}", e),
+            Error::UnknownValueType => write!(f, "Unknown value type"),
         }
     }
 }

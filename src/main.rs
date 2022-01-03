@@ -100,6 +100,7 @@ async fn main() -> Result<()> {
 
                 let mut from = map.from.as_bytes().to_vec();
                 let to = map.to.as_bytes();
+                let mut retry = false;
 
                 'retry: loop {
                     let tx = client.begin_tx().await.expect("unable to begin tx");
@@ -122,6 +123,7 @@ async fn main() -> Result<()> {
                                 // 1007: Transaction is too old to perform reads or be committed
                                 // We restart the transaction from the last read key.
                                 if e.code() == 1007 {
+                                    retry = true;
                                     continue 'retry;
                                 }
 
@@ -135,6 +137,12 @@ async fn main() -> Result<()> {
                         let mut last_read_key = None;
 
                         for value in (*kv).into_iter() {
+                            if retry {
+                                // If there has been a retry (due to code 1007) skip the first key as the last read captured it
+                                retry = false;
+                                continue;
+                            }
+
                             let k = value.key().to_vec();
                             let v = value.value();
 

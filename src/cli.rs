@@ -6,7 +6,7 @@ pub enum Opts {
     // Setup a foundation db instance
     Setup(Setup),
 
-    Export
+    Export,
 }
 
 #[derive(Debug, StructOpt)]

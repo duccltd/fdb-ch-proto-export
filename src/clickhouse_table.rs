@@ -1,10 +1,10 @@
-use std::collections::{BTreeMap};
+use std::collections::BTreeMap;
 
 use regex::Regex;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use tracing::*;
 
-use crate::{result::Result, error::Error, clickhouse::{ClickhouseTableColumnRow}};
+use crate::{clickhouse::ClickhouseTableColumnRow, error::Error, result::Result};
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -15,7 +15,7 @@ lazy_static! {
 #[derive(Clone)]
 pub struct ClickhouseTableParts {
     pub database: String,
-    pub table: String
+    pub table: String,
 }
 
 impl std::fmt::Display for ClickhouseTableParts {
@@ -28,11 +28,13 @@ impl ClickhouseTableParts {
     pub fn from_string(entry: &str) -> Result<ClickhouseTableParts> {
         let parts: Vec<&str> = entry.split('.').collect();
         if parts.len() != 2 {
-            return Err(Error::InvalidMappingConfig("Invalid table definition. Must specify <database>.<table_name>.".to_string()))
+            return Err(Error::InvalidMappingConfig(
+                "Invalid table definition. Must specify <database>.<table_name>.".to_string(),
+            ));
         }
         Ok(ClickhouseTableParts {
             database: parts[0].to_string(),
-            table: parts[1].to_string()
+            table: parts[1].to_string(),
         })
     }
 }
@@ -54,13 +56,13 @@ impl TableColumn {
             return Some("NULL".to_string());
         }
         if self.default_expression != "" {
-            return Some(self.default_expression.clone())
+            return Some(self.default_expression.clone());
         }
         match self.r#type.as_ref() {
             "String" => {
                 return Some("''".to_string());
             }
-            _ => None
+            _ => None,
         }
     }
 }
@@ -79,11 +81,11 @@ impl TryFrom<ClickhouseTableColumnRow> for TableColumn {
                 Some(entry) => {
                     int_size = match entry.as_str().parse::<i32>() {
                         Ok(i) => i,
-                        Err(_e) => return Err(Error::ParseError("Invalid integer prefix".into()))
+                        Err(_e) => return Err(Error::ParseError("Invalid integer prefix".into())),
                     };
                     entry
-                },
-                None => return Err(Error::ParseError("Unable to parse integer type".into()))
+                }
+                None => return Err(Error::ParseError("Unable to parse integer type".into())),
             };
 
             if let Some(delimiter) = matches[0].get(1) {
@@ -99,22 +101,22 @@ impl TryFrom<ClickhouseTableColumnRow> for TableColumn {
                 Some(entry) => {
                     int_size = match entry.as_str().parse::<i32>() {
                         Ok(i) => i,
-                        Err(_e) => return Err(Error::ParseError("Invalid integer prefix".into()))
+                        Err(_e) => return Err(Error::ParseError("Invalid integer prefix".into())),
                     };
-                },
-                None => return Err(Error::ParseError("Unable to parse integer type".into()))
+                }
+                None => return Err(Error::ParseError("Unable to parse integer type".into())),
             };
 
             int_size *= -1;
         }
-        
+
         Ok(TableColumn {
             name: value.name,
             default_expression: value.default_expression,
             r#type: value.r#type,
             position: value.position,
             nullable,
-            _int_size: int_size
+            _int_size: int_size,
         })
     }
 }
@@ -126,9 +128,9 @@ pub struct Table {
 
 impl Table {
     pub fn new(parts: ClickhouseTableParts, columns: Vec<TableColumn>) -> Table {
-        Table { 
+        Table {
             parts: parts.clone(),
-            columns: columns.clone(), 
+            columns: columns.clone(),
         }
     }
 
@@ -136,24 +138,20 @@ impl Table {
         self.columns.iter().map(|e| e.name.clone()).collect()
     }
 
-    pub fn construct_query(
-        &self,
-        fields: BTreeMap<usize, String>
-    ) -> Result<String> {
+    pub fn construct_query(&self, fields: BTreeMap<usize, String>) -> Result<String> {
         let names = self.column_values();
 
-        let values = fields
-            .values()
-            .cloned()
-            .collect::<Vec<String>>();
+        let values = fields.values().cloned().collect::<Vec<String>>();
 
-        Ok(format!("INSERT INTO {} ({}) VALUES ({})", self.parts.to_string(), names.join(","), values.join(",")))
+        Ok(format!(
+            "INSERT INTO {} ({}) VALUES ({})",
+            self.parts.to_string(),
+            names.join(","),
+            values.join(",")
+        ))
     }
 
-    pub fn construct_batch(
-        &self,
-        entries: Vec<BTreeMap<usize, String>>
-    ) -> Result<String> {
+    pub fn construct_batch(&self, entries: Vec<BTreeMap<usize, String>>) -> Result<String> {
         let names = self.column_values();
 
         let mut parts: Vec<String> = vec![];
@@ -166,15 +164,17 @@ impl Table {
 
                 let value = match entry.get(&i) {
                     Some(value) => value.clone(),
-                    None => {
-                        match column.default() {
-                            Some(default) => default,
-                            None => {
-                                info!("Discarded message, missing column value: table={} col={}", &self.parts.to_string(), &column.name);
-                                break    
-                            }
+                    None => match column.default() {
+                        Some(default) => default,
+                        None => {
+                            info!(
+                                "Discarded message, missing column value: table={} col={}",
+                                &self.parts.to_string(),
+                                &column.name
+                            );
+                            break;
                         }
-                    }
+                    },
                 };
 
                 current_part.push(value);
@@ -183,6 +183,11 @@ impl Table {
             parts.push(format!("({})", current_part.join(",")));
         }
 
-        Ok(format!("INSERT INTO {} ({}) VALUES {}", self.parts.to_string(), names.join(","), parts.join(",")))
+        Ok(format!(
+            "INSERT INTO {} ({}) VALUES {}",
+            self.parts.to_string(),
+            names.join(","),
+            parts.join(",")
+        ))
     }
 }

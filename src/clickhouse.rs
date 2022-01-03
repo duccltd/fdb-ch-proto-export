@@ -1,4 +1,4 @@
-use crate::clickhouse_table::{ClickhouseTableParts};
+use crate::clickhouse_table::ClickhouseTableParts;
 use crate::result::Result;
 use serde::{Deserialize, Serialize};
 
@@ -19,7 +19,10 @@ impl Client {
         Self { client }
     }
 
-    pub async fn table_columns(&self, table: ClickhouseTableParts) -> Result<Vec<ClickhouseTableColumnRow>> {
+    pub async fn table_columns(
+        &self,
+        table: ClickhouseTableParts,
+    ) -> Result<Vec<ClickhouseTableColumnRow>> {
         let rows = self.client
             .query(
                 "SELECT name, position, type, default_expression FROM system.columns WHERE database = ? AND table = ? ORDER BY position"
@@ -37,14 +40,10 @@ impl Client {
     }
 
     pub async fn write_batch(&self, query: String) -> Result<()> {
-        self.client
-            .query(&query)
-            .execute()
-            .await
-            .map_err(|e| {
-                format!("inserting batch: {}", &e);
-                e
-            })?;
+        self.client.query(&query).execute().await.map_err(|e| {
+            format!("inserting batch: {}", &e);
+            e
+        })?;
 
         Ok(())
     }

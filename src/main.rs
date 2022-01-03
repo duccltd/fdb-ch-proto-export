@@ -2,20 +2,22 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use clickhouse::Client;
-use fdb_ch_proto_export::context::AppContext;
 use fdb_ch_proto_export::cli;
-use fdb_ch_proto_export::{result::Result, fdb::FdbClient, config, error::Error, protobuf::load_protobufs, clickhouse::Client as ClickhouseClient};
+use fdb_ch_proto_export::context::AppContext;
+use fdb_ch_proto_export::{
+    clickhouse::Client as ClickhouseClient, config, error::Error, fdb::FdbClient,
+    protobuf::load_protobufs, result::Result,
+};
 use foundationdb::RangeOption;
 use futures::StreamExt;
 use tracing::*;
 
-
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
-    
+
     let mut config = config::load_config().expect("unable to load config");
-    
+
     let opts = cli::parse();
 
     match opts {
@@ -40,7 +42,7 @@ async fn main() -> Result<()> {
                 if let Some(mapping_file) = set.mapping_file {
                     config.mapping_file = Some(mapping_file);
                     changed = true;
-                }   
+                }
 
                 if changed {
                     match config.write() {
@@ -54,13 +56,13 @@ async fn main() -> Result<()> {
             cli::Setup::View => {
                 info!("{:?}", config);
             }
-        }
+        },
         cli::Opts::Export => {
             let proto_context = match &config.proto_file {
                 Some(path) => {
                     debug!("Using protofile path: {}", path);
                     load_protobufs(&path).await?
-                },
+                }
                 None => return Err(Error::MissingConfig("Missing protofile definition".into())),
             };
 
@@ -69,27 +71,33 @@ async fn main() -> Result<()> {
 
             debug!("Using fdb cluster file path: {}", &config.cluster_file);
 
-            let client = Arc::new(FdbClient::new(&config.cluster_file).expect("unable to start client"));
+            let client =
+                Arc::new(FdbClient::new(&config.cluster_file).expect("unable to start client"));
 
             debug!("Using clickhouse url: {}", &config.clickhouse_url);
 
-            let ch_client = ClickhouseClient::new(Client::default().with_url(&config.clickhouse_url));
+            let ch_client =
+                ClickhouseClient::new(Client::default().with_url(&config.clickhouse_url));
 
-            let mapping = &config.load_mapping().expect("unable to read mapping config");
+            let mapping = &config
+                .load_mapping()
+                .expect("unable to read mapping config");
 
             let mut context = AppContext::new(client.clone(), ch_client);
 
             context
-                .bind_messages(mapping, &proto_context).await.expect("unable to create registry");
+                .bind_messages(mapping, &proto_context)
+                .await
+                .expect("unable to create registry");
 
             for map in mapping {
                 let binding = match context.proto_registry.get(&map.proto) {
                     Some(binding) => binding,
-                    None => continue
+                    None => continue,
                 };
 
                 let tx = client.begin_tx().await.expect("unable to begin tx");
-                
+
                 let mut kvs = tx.get_ranges(
                     RangeOption {
                         reverse: false,
@@ -116,7 +124,7 @@ async fn main() -> Result<()> {
                             Ok(res) => res,
                             Err(e) => {
                                 error!("Failed transforming message: {:?}", e);
-                                continue
+                                continue;
                             }
                         };
 
@@ -125,7 +133,7 @@ async fn main() -> Result<()> {
 
                     let query = match binding.table.construct_batch(batch.clone()) {
                         Ok(query) => query,
-                        Err(_e) => continue
+                        Err(_e) => continue,
                     };
 
                     context.ch_client.write_batch(query).await?;
@@ -133,7 +141,11 @@ async fn main() -> Result<()> {
                     messages_written += batch.len()
                 }
 
-                info!("{} messages written to {}", messages_written, binding.table.parts.to_string())
+                info!(
+                    "{} messages written to {}",
+                    messages_written,
+                    binding.table.parts.to_string()
+                )
             }
         }
     }

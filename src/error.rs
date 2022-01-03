@@ -16,7 +16,7 @@ pub enum Error {
     StringDecodeError(std::string::FromUtf8Error),
     NoAvailableColumnBinding(String),
     NoProtoDefault(String),
-    MissingConfig(String)
+    MissingConfig(String),
 }
 
 impl std::fmt::Display for Error {
@@ -38,8 +38,12 @@ impl std::fmt::Display for Error {
             Error::Clickhouse(ref e) => write!(f, "Clickhouse error: {:?}", e),
             Error::ParseError(ref e) => write!(f, "Unable to parse: {:?}", e),
             Error::StringDecodeError(ref e) => write!(f, "String decode error: {}", e),
-            Error::NoAvailableColumnBinding(ref e) => write!(f, "No column binding available for column: {:?}", e),
-            Error::NoProtoDefault(ref e) => write!(f, "Could not find field or produce default: {:?}", e),
+            Error::NoAvailableColumnBinding(ref e) => {
+                write!(f, "No column binding available for column: {:?}", e)
+            }
+            Error::NoProtoDefault(ref e) => {
+                write!(f, "Could not find field or produce default: {:?}", e)
+            }
             Error::MissingConfig(ref e) => write!(f, "Could not find config: {:?}", e),
         }
     }
@@ -77,6 +81,9 @@ impl From<std::io::Error> for Error {
 
 impl From<serde_json::Error> for Error {
     fn from(err: serde_json::Error) -> Self {
-        Error::ParseError(format!("Could not deserialize file due to invalid format: {:?}", err))
+        Error::ParseError(format!(
+            "Could not deserialize file due to invalid format: {:?}",
+            err
+        ))
     }
 }

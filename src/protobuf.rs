@@ -1,11 +1,11 @@
-use serde::{Serialize};
+use serde::Serialize;
 use tracing::error;
 
 use std::collections::HashMap;
 
 use crate::error::Error;
 use crate::result::Result;
-use protofish::{context::{Context}, prelude::Value};
+use protofish::{context::Context, prelude::Value};
 use std::path::Path;
 
 pub async fn load_protobufs(path: impl AsRef<Path>) -> Result<Context> {

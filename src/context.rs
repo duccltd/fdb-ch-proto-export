@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::clickhouse::Client as ClickhouseClient;
 use crate::clickhouse_message_binding::MessageBinding;
 use crate::fdb::FdbClient;
-use crate::clickhouse::Client as ClickhouseClient;
 use tracing::*;
 
 pub type Registry<'a> = HashMap<String, MessageBinding<'a>>;
@@ -15,14 +15,11 @@ pub struct AppContext<'a> {
 }
 
 impl<'a> AppContext<'a> {
-    pub fn new(
-        fdb_client: Arc<FdbClient>,
-        ch_client: ClickhouseClient,
-    ) -> AppContext<'a> {
+    pub fn new(fdb_client: Arc<FdbClient>, ch_client: ClickhouseClient) -> AppContext<'a> {
         AppContext {
             fdb_client,
             ch_client,
-            proto_registry: HashMap::new()
+            proto_registry: HashMap::new(),
         }
     }
 

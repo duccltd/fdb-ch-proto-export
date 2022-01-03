@@ -1,9 +1,9 @@
 use std::time::Duration;
 
+use crate::result::Result;
 use foundationdb::api::{FdbApiBuilder, NetworkAutoStop};
 use foundationdb::{Database, Transaction};
 use tokio::time::timeout;
-use crate::result::Result;
 
 pub struct FdbClient {
     pub db: Database,

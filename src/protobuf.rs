@@ -1,4 +1,5 @@
 use serde::{Serialize};
+use tracing::error;
 
 use std::collections::HashMap;
 
@@ -132,7 +133,10 @@ pub fn value_to_string(
             v.to_string().replace("'", "")
         }
 
-        _ => return Err(Error::ParseError("Unsupported prototype".into())),
+        _ => {
+            error!("Unable to convert proto value to string: {:?}", value);
+            return Err(Error::ParseError("Unsupported prototype".into()));
+        }
 
         // Value which was incomplete due to missing bytes in the payload.
         // Incomplete(_, v) => serde_json::Value::String(format!(

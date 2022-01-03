@@ -1,6 +1,7 @@
 use crate::clickhouse_table::ClickhouseTableParts;
 use crate::result::Result;
 use serde::{Deserialize, Serialize};
+use tracing::debug;
 
 #[derive(Debug, clickhouse::Row, Serialize, Deserialize, Clone)]
 pub struct ClickhouseTableColumnRow {
@@ -40,6 +41,8 @@ impl Client {
     }
 
     pub async fn write_batch(&self, query: String) -> Result<()> {
+        debug!("writing batch: {}", &query);
+
         self.client.query(&query).execute().await.map_err(|e| {
             format!("inserting batch: {}", &e);
             e

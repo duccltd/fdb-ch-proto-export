@@ -109,8 +109,9 @@ pub fn value_to_string(
             let mut fields = v.fields.clone().into_iter();
 
             // Handle google protobuf timestamp
-            if resolved.full_name == "google.protobuf.Timestamp" {
-                if let Some(seconds) = fields.find(|f| f.number == 1) {
+            if let Some(seconds) = fields.find(|f| f.number == 1) {
+                // TODO: protos.Timestamp is specific to our project, we need a better way to handle this
+                if resolved.full_name == "google.protobuf.Timestamp" || resolved.full_name == "protos.Timestamp" {
                     if let Value::Int64(v) = seconds.value {
                         return Ok(v.to_string());
                     }

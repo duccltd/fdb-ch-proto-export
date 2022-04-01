@@ -72,7 +72,14 @@ pub struct Mapping {
     pub from: String,
     pub to: String,
     pub proto: String,
-    pub table: String
+    pub table: String,
+    pub custom_field_mapping: Option<Vec<CustomFieldMapping>>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CustomFieldMapping {
+    pub from: String,
+    pub to: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

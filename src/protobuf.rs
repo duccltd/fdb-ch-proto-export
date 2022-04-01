@@ -1,10 +1,11 @@
-use serde::{Serialize};
+use serde::Serialize;
+use tracing::error;
 
 use std::collections::HashMap;
 
 use crate::error::Error;
 use crate::result::Result;
-use protofish::{context::{Context}, prelude::Value};
+use protofish::{context::Context, prelude::Value};
 use std::path::Path;
 
 pub async fn load_protobufs(path: impl AsRef<Path>) -> Result<Context> {
@@ -108,8 +109,9 @@ pub fn value_to_string(
             let mut fields = v.fields.clone().into_iter();
 
             // Handle google protobuf timestamp
-            if resolved.full_name == "google.protobuf.Timestamp" {
-                if let Some(seconds) = fields.find(|f| f.number == 1) {
+            if let Some(seconds) = fields.find(|f| f.number == 1) {
+                // TODO: protos.Timestamp is specific to our project, we need a better way to handle this
+                if resolved.full_name == "google.protobuf.Timestamp" || resolved.full_name == "protos.Timestamp" {
                     if let Value::Int64(v) = seconds.value {
                         return Ok(v.to_string());
                     }
@@ -132,7 +134,12 @@ pub fn value_to_string(
             v.to_string().replace("'", "")
         }
 
-        _ => return Err(Error::ParseError("Unsupported prototype".into())),
+        Unknown(_) => return Err(Error::UnknownValueType),
+
+        _ => {
+            error!("Unable to convert proto value to string: {:?}", value);
+            return Err(Error::ParseError("Unsupported prototype".into()));
+        }
 
         // Value which was incomplete due to missing bytes in the payload.
         // Incomplete(_, v) => serde_json::Value::String(format!(

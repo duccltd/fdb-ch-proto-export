@@ -10,4 +10,5 @@ Cargo.lock
 **/*.rs.bk
 
 map.json
+map2.json
 .DS_Store

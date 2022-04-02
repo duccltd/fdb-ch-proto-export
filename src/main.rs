@@ -1,16 +1,19 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use clickhouse::Client;
 use fdb_ch_proto_export::cli;
 use fdb_ch_proto_export::context::AppContext;
 use fdb_ch_proto_export::{
-    clickhouse::Client as ClickhouseClient, config, error::Error, fdb::FdbClient,
+    config, error::Error, fdb::FdbClient,
     protobuf::load_protobufs, result::Result,
 };
 use foundationdb::RangeOption;
 use futures::StreamExt;
 use tracing::*;
+
+use tokio_postgres::{NoTls};
+
+use fdb_ch_proto_export::postgres::Client as PostgresClient;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -34,8 +37,8 @@ async fn main() -> Result<()> {
                     changed = true;
                 }
 
-                if let Some(clickhouse_url) = set.clickhouse_url {
-                    config.clickhouse_url = clickhouse_url;
+                if let Some(database_url) = set.database_url {
+                    config.database_url = database_url;
                     changed = true;
                 }
 
@@ -74,16 +77,30 @@ async fn main() -> Result<()> {
             let client =
                 Arc::new(FdbClient::new(&config.cluster_file).expect("unable to start client"));
 
-            debug!("Using clickhouse url: {}", &config.clickhouse_url);
+            debug!("Using cockroach url: {}", &config.database_url);
 
-            let ch_client =
-                ClickhouseClient::new(Client::default().with_url(&config.clickhouse_url));
+            let (pg_client, connection) = 
+                tokio_postgres::connect(
+                    &config.database_url, 
+                    NoTls
+                )
+                .await.expect("unable to connect");
+
+            // The connection object performs the actual communication with the database,
+            // so spawn it off to run on its own.
+            tokio::spawn(async move {
+                if let Err(e) = connection.await {
+                    error!("connection error: {}", e);
+                }
+            });    
+
+            let pg_client = PostgresClient::new(pg_client);
 
             let mapping = &config
                 .load_mapping()
                 .expect("unable to read mapping config");
 
-            let mut context = AppContext::new(client.clone(), ch_client);
+            let mut context = AppContext::new(client.clone(), pg_client);
 
             context
                 .bind_messages(mapping, &proto_context)
@@ -158,12 +175,16 @@ async fn main() -> Result<()> {
                             batch.push(fields);
                         }
 
+                        if batch.len() == 0 {
+                            continue;
+                        }
+
                         let query = match binding.table.construct_batch(batch.clone()) {
                             Ok(query) => query,
                             Err(_e) => continue,
                         };
 
-                        context.ch_client.write_batch(query).await?;
+                        context.pg_client.write_batch(query).await?;
 
                         if let Some(last_read_key) = last_read_key {
                             from = last_read_key;

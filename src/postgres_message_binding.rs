@@ -6,9 +6,9 @@ use protofish::{
 };
 
 use crate::{
-    clickhouse_table::{Table, TableColumn},
+    postgres_table::{Table, TableColumn},
     error::Error,
-    protobuf::value_to_string,
+    protobuf::value_to_string, config::CustomFieldMapping,
 };
 
 use crate::result::Result;
@@ -20,7 +20,7 @@ pub struct MessageBinding<'a> {
     pub message_mappings: HashMap<usize, PreparedMessageField<'a>>,
 }
 
-pub fn bind_proto_message(message: &MessageInfo, table: Table) -> Result<MessageBinding> {
+pub fn bind_proto_message<'a>(message: &'a MessageInfo, table: Table, custom_field_mapping: Option<&Vec<CustomFieldMapping>>) -> Result<MessageBinding<'a>> {
     info!(
         "binding {} to {}. num columns: {}",
         &message.full_name,
@@ -31,6 +31,26 @@ pub fn bind_proto_message(message: &MessageInfo, table: Table) -> Result<Message
     let mut column_fields: HashMap<usize, PreparedMessageField> = HashMap::new();
 
     for column in &table.columns {
+        if let Some(custom_mapping) = &custom_field_mapping {
+            if let Some(custom_mapping) = custom_mapping.iter().find(|mapping| mapping.to == column.name) {
+                let field = match message.iter_fields().find(|field| field.name == custom_mapping.from) {
+                    Some(field) => field,
+                    None => continue,
+                };
+
+                column_fields.insert(
+                    (column.position - 1) as usize,
+                    PreparedMessageField {
+                        desc: field,
+                        kind: field.field_type.clone(),
+                        column: column.clone(),
+                    },
+                );
+
+                continue;
+            }
+        } 
+
         match message.iter_fields().find(|f| &f.name == &column.name) {
             Some(field) => {
                 column_fields.insert(
@@ -65,8 +85,9 @@ impl<'a> MessageBinding<'a> {
                 Err(e) => {
                     if let Error::UnknownValueType = e {
                         warn!(
-                            "Skipping field with unknown value type: {}",
-                            field.desc.name
+                            "Skipping field with unknown value type: {} - {:?}",
+                            field.desc.name,
+                            field.desc.field_type
                         );
                         continue;
                     }
@@ -81,6 +102,7 @@ impl<'a> MessageBinding<'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct PreparedMessageField<'a> {
     desc: &'a MessageField,
     kind: ValueType,

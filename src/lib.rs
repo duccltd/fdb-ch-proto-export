@@ -1,7 +1,7 @@
 pub mod cli;
-pub mod clickhouse;
-pub mod clickhouse_message_binding;
-pub mod clickhouse_table;
+pub mod postgres;
+pub mod postgres_message_binding;
+pub mod postgres_table;
 pub mod config;
 pub mod context;
 pub mod error;

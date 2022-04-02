@@ -25,7 +25,7 @@ pub struct Set {
     pub proto_file: Option<String>,
 
     #[structopt(long, help = "Clickhouse url")]
-    pub clickhouse_url: Option<String>,
+    pub database_url: Option<String>,
 
     #[structopt(long, help = "Path to the mapping")]
     pub mapping_file: Option<String>,

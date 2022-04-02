@@ -33,15 +33,15 @@ pub fn load_config() -> Result<FdbCliConfig> {
                 Err(_e) => res.cluster_file,
             };
 
-            let clickhouse_url = match std::env::var("CLICKHOUSE_URL") {
-                Ok(clickhouse_url) => {
+            let database_url = match std::env::var("DATABASE_URL") {
+                Ok(database_url) => {
                     info!(
-                        "Found environment variable override for CLICKHOUSE_URL: {}",
-                        &clickhouse_url
+                        "Found environment variable override for DATABASE_URL: {}",
+                        &database_url
                     );
-                    clickhouse_url
+                    database_url
                 }
-                Err(_e) => res.clickhouse_url,
+                Err(_e) => res.database_url,
             };
 
             let proto_file = match std::env::var("PROTO_FILE") {
@@ -68,7 +68,7 @@ pub fn load_config() -> Result<FdbCliConfig> {
 
             FdbCliConfig {
                 cluster_file,
-                clickhouse_url,
+                database_url,
                 proto_file,
                 mapping_file,
                 ..res
@@ -103,7 +103,7 @@ pub struct FdbCliConfig {
     pub cluster_file: String,
 
     // clickhouse url
-    pub clickhouse_url: String,
+    pub database_url: String,
 
     // path to the protobuf file
     pub proto_file: Option<String>,
@@ -119,7 +119,7 @@ impl std::default::Default for FdbCliConfig {
         Self {
             version: VERSION.to_string(),
             cluster_file: String::from(path),
-            clickhouse_url: "http://localhost:8083".to_string(),
+            database_url: "http://localhost:8083".to_string(),
             proto_file: None,
             mapping_file: None,
         }

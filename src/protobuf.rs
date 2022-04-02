@@ -1,5 +1,5 @@
 use serde::Serialize;
-use tracing::error;
+use tracing::*;
 
 use std::collections::HashMap;
 
@@ -79,7 +79,14 @@ pub fn value_to_string(
         SFixed32(v) => v.to_string(),
         SFixed64(v) => v.to_string(),
         Bool(v) => v.to_string(),
-        String(v) => format!("'{}'", v.replace("'", "\\'")),
+        String(v) => {
+            if v.contains("'") {
+                format!("E'{}'", v.replace("'", "\\'"))
+            } else {
+                format!("'{}'", v)
+            }
+        },
+        // VariableLength(v) => v.to_string(),
 
         // Packed(v) => match v {
         //     PackedArray::Double(v) => to_value(v)?,
@@ -99,8 +106,9 @@ pub fn value_to_string(
 
         Enum(v) => {
             let resolved = context.resolve_enum(v.enum_ref);
+            let name = resolved.get_field_by_value(v.value).unwrap().name.clone();
 
-            format!("'{}'", resolved.get_field_by_value(v.value).unwrap().name.clone())
+            format!("'{}'", name.to_lowercase())
         }
 
         Message(v) => {
@@ -121,6 +129,12 @@ pub fn value_to_string(
             let values: HashMap<std::string::String, std::string::String> = v.fields
                 .clone()
                 .into_iter()
+                .filter(|field| {
+                    match &resolved.get_field(field.number) {
+                        Some(_field) => true,
+                        None => false,
+                    }
+                })
                 .map(|field| {
                     let name = &resolved.get_field(field.number).unwrap().name;
 

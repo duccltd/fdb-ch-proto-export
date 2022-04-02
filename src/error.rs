@@ -7,11 +7,11 @@ pub enum Error {
     UnableToReadProtobuf(std::io::Error),
     ProtofishParseError(protofish::context::ParseError),
     Fdb(FdbError),
+    Postgres(Arc<tokio_postgres::Error>),
     Elapsed(tokio::time::error::Elapsed),
     UnableToReadConfig(std::io::Error),
     UnableToWriteConfig(std::io::Error),
     InvalidMappingConfig(String),
-    Clickhouse(Arc<clickhouse::error::Error>),
     ParseError(String),
     StringDecodeError(std::string::FromUtf8Error),
     NoAvailableColumnBinding(String),
@@ -36,7 +36,7 @@ impl std::fmt::Display for Error {
             Error::InvalidMappingConfig(ref err) => {
                 write!(f, "Invalid mapping configuration: {}", err)
             }
-            Error::Clickhouse(ref e) => write!(f, "Clickhouse error: {:?}", e),
+            Error::Postgres(ref e) => write!(f, "Postgres error: {:?}", e),
             Error::ParseError(ref e) => write!(f, "Unable to parse: {:?}", e),
             Error::StringDecodeError(ref e) => write!(f, "String decode error: {}", e),
             Error::NoAvailableColumnBinding(ref e) => {
@@ -69,9 +69,9 @@ impl From<tokio::time::error::Elapsed> for Error {
     }
 }
 
-impl From<clickhouse::error::Error> for Error {
-    fn from(err: clickhouse::error::Error) -> Error {
-        Error::Clickhouse(Arc::new(err))
+impl From<tokio_postgres::Error> for Error {
+    fn from(err: tokio_postgres::Error) -> Error {
+        Error::Postgres(Arc::new(err))
     }
 }
 

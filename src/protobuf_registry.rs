@@ -2,9 +2,9 @@ use protofish::{context::MessageInfo, prelude::Context};
 use tracing::info;
 
 use crate::{
-    clickhouse_message_binding::bind_proto_message,
-    clickhouse_table::{ClickhouseTableParts, Table},
-    config::Mapping,
+    postgres_message_binding::bind_proto_message,
+    postgres_table::{ClickhouseTableParts, Table},
+    config::{Mapping, CustomFieldMapping},
     context::AppContext,
     error::Error,
     result::Result,
@@ -45,14 +45,14 @@ impl<'a> AppContext<'a> {
                 continue;
             }
 
-            self.bind_message(message, table).await?;
+            self.bind_message(message, table, mapping.custom_field_mapping.as_ref()).await?;
         }
 
         Ok(())
     }
 
-    async fn bind_message(&mut self, message: &'a MessageInfo, table: Table) -> Result<()> {
-        let binding = bind_proto_message(message, table)?;
+    async fn bind_message(&mut self, message: &'a MessageInfo, table: Table, custom_field_mapping: Option<&Vec<CustomFieldMapping>>) -> Result<()> {
+        let binding: _ = bind_proto_message(message, table, custom_field_mapping)?;
 
         self.proto_registry
             .insert(message.full_name.clone(), binding);
@@ -60,11 +60,11 @@ impl<'a> AppContext<'a> {
         Ok(())
     }
 
-    async fn construct_table(&self, table_name: &String) -> Result<Table> {
+    async fn construct_table(&mut self, table_name: &String) -> Result<Table> {
         let table = ClickhouseTableParts::from_string(&table_name)?;
 
         let mut columns = vec![];
-        for column in self.ch_client.table_columns(table.clone()).await? {
+        for column in self.pg_client.table_columns(table.clone()).await? {
             columns.push(column.try_into()?);
         }
 

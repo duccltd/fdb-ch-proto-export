@@ -4,7 +4,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tracing::*;
 
-use crate::{clickhouse::ClickhouseTableColumnRow, error::Error, result::Result};
+use crate::{postgres::TableColumnRow, error::Error, result::Result};
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -42,7 +42,7 @@ impl ClickhouseTableParts {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct TableColumn {
     pub name: String,
-    pub position: u64,
+    pub position: i64,
     pub r#type: String,
     pub default_expression: String,
 
@@ -53,7 +53,7 @@ pub struct TableColumn {
 impl TableColumn {
     pub fn default(&self) -> Option<String> {
         if self.nullable {
-            return Some("NULL".to_string());
+            return Some("null".to_string());
         }
         if self.default_expression != "" {
             return Some(self.default_expression.clone());
@@ -67,12 +67,10 @@ impl TableColumn {
     }
 }
 
-impl TryFrom<ClickhouseTableColumnRow> for TableColumn {
+impl TryFrom<TableColumnRow> for TableColumn {
     type Error = crate::error::Error;
 
-    fn try_from(value: ClickhouseTableColumnRow) -> Result<Self> {
-        let nullable = value.name.starts_with("Nullable(");
-
+    fn try_from(value: TableColumnRow) -> Result<Self> {
         let mut int_size = 0;
 
         let matches: Vec<regex::Captures> = INT_REGEX.captures_iter(&value.name).collect();
@@ -115,7 +113,7 @@ impl TryFrom<ClickhouseTableColumnRow> for TableColumn {
             default_expression: value.default_expression,
             r#type: value.r#type,
             position: value.position,
-            nullable,
+            nullable: value.nullable,
             _int_size: int_size,
         })
     }
@@ -167,6 +165,10 @@ impl Table {
                     None => match column.default() {
                         Some(default) => default,
                         None => {
+                            if column.nullable {
+                                return Ok("null".to_string());
+                            }
+
                             info!(
                                 "Discarded message, missing column value: table={} col={}",
                                 &self.parts.to_string(),

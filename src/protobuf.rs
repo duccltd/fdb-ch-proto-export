@@ -1,3 +1,4 @@
+use chrono::{Utc, NaiveDateTime, DateTime};
 use serde::Serialize;
 use tracing::*;
 
@@ -121,7 +122,8 @@ pub fn value_to_string(
                 // TODO: protos.Timestamp is specific to our project, we need a better way to handle this
                 if resolved.full_name == "google.protobuf.Timestamp" || resolved.full_name == "protos.Timestamp" {
                     if let Value::Int64(v) = seconds.value {
-                        return Ok(v.to_string());
+                        let ts = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(v, 0 as u32), Utc).to_rfc3339();
+                        return Ok(ts);
                     }
                 }
             }

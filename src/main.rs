@@ -86,9 +86,9 @@ async fn main() -> Result<()> {
             #[cfg(feature = "secure")]
             let (pg_client, connection) = {
                 let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
-                builder.set_ca_file(config.postgres_ca_file.unwrap()).unwrap();
-                builder.set_certificate_chain_file(config.postgres_certificate_chain_file.unwrap()).unwrap();
-                builder.set_private_key_file(config.postgres_private_key_file.unwrap(), SslFiletype::PEM).unwrap();
+                builder.set_ca_file(config.postgres_ca_file.clone().unwrap()).unwrap();
+                builder.set_certificate_chain_file(config.postgres_certificate_chain_file.clone().unwrap()).unwrap();
+                builder.set_private_key_file(config.postgres_private_key_file.clone().unwrap(), SslFiletype::PEM).unwrap();
                 let tls = postgres_openssl::MakeTlsConnector::new(builder.build());
 
                 tokio_postgres::connect(

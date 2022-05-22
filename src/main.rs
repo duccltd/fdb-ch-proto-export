@@ -11,6 +11,10 @@ use foundationdb::RangeOption;
 use futures::StreamExt;
 use tracing::*;
 
+#[cfg(feature = "secure")]
+use openssl::ssl::{SslConnector, SslMethod, SslFiletype};
+
+#[cfg(not(feature = "secure"))]
 use tokio_postgres::{NoTls};
 
 use fdb_ch_proto_export::postgres::Client as PostgresClient;
@@ -79,12 +83,25 @@ async fn main() -> Result<()> {
 
             debug!("Using cockroach url: {}", &config.database_url);
 
-            let (pg_client, connection) = 
+            #[cfg(feature = "secure")]
+            let (pg_client, connection) = {
+                let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
+                builder.set_ca_file(config.postgres_ca_file.unwrap()).unwrap();
+                builder.set_certificate_chain_file(config.postgres_certificate_chain_file.unwrap()).unwrap();
+                builder.set_private_key_file(config.postgres_private_key_file.unwrap(), SslFiletype::PEM).unwrap();
+                let tls = postgres_openssl::MakeTlsConnector::new(builder.build());
+
                 tokio_postgres::connect(
-                    &config.database_url, 
-                    NoTls
-                )
-                .await.expect("unable to connect");
+                    &config.database_url,
+                    tls,
+                ).await.expect("unable to connect (secure mode)")
+            };
+
+            #[cfg(not(feature = "secure"))]
+            let (pg_client, connection) = tokio_postgres::connect(
+                &config.database_url,
+                NoTls,
+            ).await.expect("unable to connect (isnecure mode)");
 
             // The connection object performs the actual communication with the database,
             // so spawn it off to run on its own.

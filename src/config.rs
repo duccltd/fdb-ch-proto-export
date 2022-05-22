@@ -66,11 +66,53 @@ pub fn load_config() -> Result<FdbCliConfig> {
                 Err(_e) => res.mapping_file,
             };
 
+            #[cfg(feature = "secure")]
+            let postgres_ca_file = match std::env::var("POSTGRES_CA_FILE") {
+                Ok(postgres_ca_file) => {
+                    info!(
+                        "Found environment variable override for POSTGRES_CA_FILE: {}",
+                        &postgres_ca_file
+                    );
+                    Some(postgres_ca_file)
+                }
+                Err(_e) => res.postgres_ca_file,
+            };
+
+            #[cfg(feature = "secure")]
+            let postgres_certificate_chain_file = match std::env::var("POSTGRES_CERTIFICATE_CHAIN_FILE") {
+                Ok(postgres_certificate_chain_file) => {
+                    info!(
+                        "Found environment variable override for POSTGRES_CERTIFICATE_CHAIN_FILE: {}",
+                        &postgres_certificate_chain_file
+                    );
+                    Some(postgres_certificate_chain_file)
+                }
+                Err(_e) => res.postgres_certificate_chain_file,
+            };
+
+            #[cfg(feature = "secure")]
+            let postgres_private_key_file = match std::env::var("POSTGRES_PRIVATE_KEY_FILE") {
+                Ok(postgres_private_key_file) => {
+                    info!(
+                        "Found environment variable override for POSTGRES_PRIVATE_KEY_FILE: {}",
+                        &postgres_private_key_file
+                    );
+                    Some(postgres_private_key_file)
+                }
+                Err(_e) => res.postgres_private_key_file,
+            };
+
             FdbCliConfig {
                 cluster_file,
                 database_url,
                 proto_file,
                 mapping_file,
+                #[cfg(feature = "secure")]
+                postgres_ca_file,
+                #[cfg(feature = "secure")]
+                postgres_certificate_chain_file,
+                #[cfg(feature = "secure")]
+                postgres_private_key_file,
                 ..res
             }
         }
@@ -110,6 +152,18 @@ pub struct FdbCliConfig {
 
     // path to mapping proto config
     pub mapping_file: Option<String>,
+
+    // path to secure mode certificate authority file
+    #[cfg(feature = "secure")]
+    pub postgres_ca_file: Option<String>,
+
+    // path to secure mode certificate chain file
+    #[cfg(feature = "secure")]
+    pub postgres_certificate_chain_file: Option<String>,
+
+    // path to secure mode private key file
+    #[cfg(feature = "secure")]
+    pub postgres_private_key_file: Option<String>,
 }
 
 impl std::default::Default for FdbCliConfig {
@@ -122,6 +176,12 @@ impl std::default::Default for FdbCliConfig {
             database_url: "http://localhost:8083".to_string(),
             proto_file: None,
             mapping_file: None,
+            #[cfg(feature = "secure")]
+            postgres_ca_file: None,
+            #[cfg(feature = "secure")]
+            postgres_certificate_chain_file: None,
+            #[cfg(feature = "secure")]
+            postgres_private_key_file: None,
         }
     }
 }

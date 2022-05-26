@@ -61,7 +61,7 @@ impl<'a> MessageBinding<'a> {
 
         for (idx, field) in &self.message_mappings {
             let value = match field.prepare_field_value(ctx, &data) {
-                Ok(v) => v.replace("?", "\\?"),
+                Ok(v) => v.replace("?", "QUESTION_MARK"),
                 Err(e) => {
                     if let Error::UnknownValueType = e {
                         warn!(

@@ -18,7 +18,7 @@ prost = "0.7.0"
 prost-types = "0.7.0"
 foundationdb = "0.5"
 confy = "0.3.1"
-clickhouse = "0.9.3"
+clickhouse = "0.10.0"
 os_type = "2.3"
 structopt = { version = "0.3", default-features = false }
 lazy_static = "1.4.0"
